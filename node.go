@@ -459,3 +459,11 @@ func (n *Node) WriteFrameExcept(exceptChannel *Channel, fr frame.Frame) {
 	case <-n.terminate:
 	}
 }
+
+func (n *Node) Channels() []*Channel {
+	chlist := make([]*Channel, 0, len(n.channels))
+	for ch := range n.channels {
+		chlist = append(chlist, ch)
+	}
+	return chlist
+}
