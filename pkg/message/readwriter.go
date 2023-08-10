@@ -476,6 +476,10 @@ func (mde *ReadWriter) Write(msg Message, isV2 bool) *MessageRaw {
 			continue
 		}
 
+		el := reflect.ValueOf(msg).Elem()
+		if el.NumField() <= f.index { // something is wrong, avoid panic and continue
+			continue
+		}
 		target := reflect.ValueOf(msg).Elem().Field(f.index)
 
 		switch target.Kind() {
