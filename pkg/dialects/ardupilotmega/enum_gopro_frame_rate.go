@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type GOPRO_FRAME_RATE uint32
@@ -57,35 +57,40 @@ var labels_GOPRO_FRAME_RATE = map[GOPRO_FRAME_RATE]string{
 	GOPRO_FRAME_RATE_12_5: "GOPRO_FRAME_RATE_12_5",
 }
 
+var values_GOPRO_FRAME_RATE = map[string]GOPRO_FRAME_RATE{
+	"GOPRO_FRAME_RATE_12":   GOPRO_FRAME_RATE_12,
+	"GOPRO_FRAME_RATE_15":   GOPRO_FRAME_RATE_15,
+	"GOPRO_FRAME_RATE_24":   GOPRO_FRAME_RATE_24,
+	"GOPRO_FRAME_RATE_25":   GOPRO_FRAME_RATE_25,
+	"GOPRO_FRAME_RATE_30":   GOPRO_FRAME_RATE_30,
+	"GOPRO_FRAME_RATE_48":   GOPRO_FRAME_RATE_48,
+	"GOPRO_FRAME_RATE_50":   GOPRO_FRAME_RATE_50,
+	"GOPRO_FRAME_RATE_60":   GOPRO_FRAME_RATE_60,
+	"GOPRO_FRAME_RATE_80":   GOPRO_FRAME_RATE_80,
+	"GOPRO_FRAME_RATE_90":   GOPRO_FRAME_RATE_90,
+	"GOPRO_FRAME_RATE_100":  GOPRO_FRAME_RATE_100,
+	"GOPRO_FRAME_RATE_120":  GOPRO_FRAME_RATE_120,
+	"GOPRO_FRAME_RATE_240":  GOPRO_FRAME_RATE_240,
+	"GOPRO_FRAME_RATE_12_5": GOPRO_FRAME_RATE_12_5,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GOPRO_FRAME_RATE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_GOPRO_FRAME_RATE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_GOPRO_FRAME_RATE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *GOPRO_FRAME_RATE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask GOPRO_FRAME_RATE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_GOPRO_FRAME_RATE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_GOPRO_FRAME_RATE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = GOPRO_FRAME_RATE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

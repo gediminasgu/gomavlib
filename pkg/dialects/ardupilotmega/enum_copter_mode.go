@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // A mapping of copter flight modes for custom_mode field of heartbeat.
@@ -66,35 +66,51 @@ var labels_COPTER_MODE = map[COPTER_MODE]string{
 	COPTER_MODE_AUTO_RTL:     "COPTER_MODE_AUTO_RTL",
 }
 
+var values_COPTER_MODE = map[string]COPTER_MODE{
+	"COPTER_MODE_STABILIZE":    COPTER_MODE_STABILIZE,
+	"COPTER_MODE_ACRO":         COPTER_MODE_ACRO,
+	"COPTER_MODE_ALT_HOLD":     COPTER_MODE_ALT_HOLD,
+	"COPTER_MODE_AUTO":         COPTER_MODE_AUTO,
+	"COPTER_MODE_GUIDED":       COPTER_MODE_GUIDED,
+	"COPTER_MODE_LOITER":       COPTER_MODE_LOITER,
+	"COPTER_MODE_RTL":          COPTER_MODE_RTL,
+	"COPTER_MODE_CIRCLE":       COPTER_MODE_CIRCLE,
+	"COPTER_MODE_LAND":         COPTER_MODE_LAND,
+	"COPTER_MODE_DRIFT":        COPTER_MODE_DRIFT,
+	"COPTER_MODE_SPORT":        COPTER_MODE_SPORT,
+	"COPTER_MODE_FLIP":         COPTER_MODE_FLIP,
+	"COPTER_MODE_AUTOTUNE":     COPTER_MODE_AUTOTUNE,
+	"COPTER_MODE_POSHOLD":      COPTER_MODE_POSHOLD,
+	"COPTER_MODE_BRAKE":        COPTER_MODE_BRAKE,
+	"COPTER_MODE_THROW":        COPTER_MODE_THROW,
+	"COPTER_MODE_AVOID_ADSB":   COPTER_MODE_AVOID_ADSB,
+	"COPTER_MODE_GUIDED_NOGPS": COPTER_MODE_GUIDED_NOGPS,
+	"COPTER_MODE_SMART_RTL":    COPTER_MODE_SMART_RTL,
+	"COPTER_MODE_FLOWHOLD":     COPTER_MODE_FLOWHOLD,
+	"COPTER_MODE_FOLLOW":       COPTER_MODE_FOLLOW,
+	"COPTER_MODE_ZIGZAG":       COPTER_MODE_ZIGZAG,
+	"COPTER_MODE_SYSTEMID":     COPTER_MODE_SYSTEMID,
+	"COPTER_MODE_AUTOROTATE":   COPTER_MODE_AUTOROTATE,
+	"COPTER_MODE_AUTO_RTL":     COPTER_MODE_AUTO_RTL,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e COPTER_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_COPTER_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_COPTER_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *COPTER_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask COPTER_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_COPTER_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_COPTER_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = COPTER_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

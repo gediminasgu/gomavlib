@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Focus types for MAV_CMD_SET_CAMERA_FOCUS
@@ -37,35 +37,33 @@ var labels_SET_FOCUS_TYPE = map[SET_FOCUS_TYPE]string{
 	FOCUS_TYPE_AUTO_CONTINUOUS: "FOCUS_TYPE_AUTO_CONTINUOUS",
 }
 
+var values_SET_FOCUS_TYPE = map[string]SET_FOCUS_TYPE{
+	"FOCUS_TYPE_STEP":            FOCUS_TYPE_STEP,
+	"FOCUS_TYPE_CONTINUOUS":      FOCUS_TYPE_CONTINUOUS,
+	"FOCUS_TYPE_RANGE":           FOCUS_TYPE_RANGE,
+	"FOCUS_TYPE_METERS":          FOCUS_TYPE_METERS,
+	"FOCUS_TYPE_AUTO":            FOCUS_TYPE_AUTO,
+	"FOCUS_TYPE_AUTO_SINGLE":     FOCUS_TYPE_AUTO_SINGLE,
+	"FOCUS_TYPE_AUTO_CONTINUOUS": FOCUS_TYPE_AUTO_CONTINUOUS,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e SET_FOCUS_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_SET_FOCUS_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_SET_FOCUS_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *SET_FOCUS_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask SET_FOCUS_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_SET_FOCUS_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_SET_FOCUS_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = SET_FOCUS_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

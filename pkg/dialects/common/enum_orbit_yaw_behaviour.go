@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Yaw behaviour during orbit flight.
@@ -31,35 +31,31 @@ var labels_ORBIT_YAW_BEHAVIOUR = map[ORBIT_YAW_BEHAVIOUR]string{
 	ORBIT_YAW_BEHAVIOUR_RC_CONTROLLED:                "ORBIT_YAW_BEHAVIOUR_RC_CONTROLLED",
 }
 
+var values_ORBIT_YAW_BEHAVIOUR = map[string]ORBIT_YAW_BEHAVIOUR{
+	"ORBIT_YAW_BEHAVIOUR_HOLD_FRONT_TO_CIRCLE_CENTER":  ORBIT_YAW_BEHAVIOUR_HOLD_FRONT_TO_CIRCLE_CENTER,
+	"ORBIT_YAW_BEHAVIOUR_HOLD_INITIAL_HEADING":         ORBIT_YAW_BEHAVIOUR_HOLD_INITIAL_HEADING,
+	"ORBIT_YAW_BEHAVIOUR_UNCONTROLLED":                 ORBIT_YAW_BEHAVIOUR_UNCONTROLLED,
+	"ORBIT_YAW_BEHAVIOUR_HOLD_FRONT_TANGENT_TO_CIRCLE": ORBIT_YAW_BEHAVIOUR_HOLD_FRONT_TANGENT_TO_CIRCLE,
+	"ORBIT_YAW_BEHAVIOUR_RC_CONTROLLED":                ORBIT_YAW_BEHAVIOUR_RC_CONTROLLED,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e ORBIT_YAW_BEHAVIOUR) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_ORBIT_YAW_BEHAVIOUR {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_ORBIT_YAW_BEHAVIOUR[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *ORBIT_YAW_BEHAVIOUR) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask ORBIT_YAW_BEHAVIOUR
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_ORBIT_YAW_BEHAVIOUR {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_ORBIT_YAW_BEHAVIOUR[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = ORBIT_YAW_BEHAVIOUR(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

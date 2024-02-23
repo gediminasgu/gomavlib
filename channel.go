@@ -1,17 +1,23 @@
 package gomavlib
 
 import (
+	"context"
 	"crypto/rand"
+	"errors"
 	"io"
 
 	"github.com/bluenviron/gomavlib/v2/pkg/frame"
 	"github.com/bluenviron/gomavlib/v2/pkg/message"
 )
 
-func randomByte() byte {
+const (
+	writeBufferSize = 64
+)
+
+func randomByte() (byte, error) {
 	var buf [1]byte
-	rand.Read(buf[:])
-	return buf[0]
+	_, err := rand.Read(buf[:])
+	return buf[0], err
 }
 
 // Channel is a communication channel created by an Endpoint.
@@ -19,19 +25,34 @@ func randomByte() byte {
 // For instance, a TCP client endpoint creates a single channel, while a TCP
 // server endpoint creates a channel for each incoming connection.
 type Channel struct {
-	e       Endpoint
-	label   string
-	rwc     io.ReadWriteCloser
-	n       *Node
-	frw     *frame.ReadWriter
-	running bool
+	n     *Node
+	e     Endpoint
+	label string
+	rwc   io.Closer
+
+	ctx       context.Context
+	ctxCancel func()
+	frw       *frame.ReadWriter
+	running   bool
 
 	// in
-	write     chan interface{}
-	terminate chan struct{}
+	chWrite chan interface{}
+
+	// out
+	done chan struct{}
 }
 
-func newChannel(n *Node, e Endpoint, label string, rwc io.ReadWriteCloser) (*Channel, error) {
+func newChannel(
+	n *Node,
+	e Endpoint,
+	label string,
+	rwc io.ReadWriteCloser,
+) (*Channel, error) {
+	linkID, err := randomByte()
+	if err != nil {
+		return nil, err
+	}
+
 	frw, err := frame.NewReadWriter(frame.ReadWriterConf{
 		ReadWriter:  rwc,
 		DialectRW:   n.dialectRW,
@@ -44,124 +65,118 @@ func newChannel(n *Node, e Endpoint, label string, rwc io.ReadWriteCloser) (*Cha
 			return frame.V1
 		}(),
 		OutComponentID:     n.conf.OutComponentID,
-		OutSignatureLinkID: randomByte(),
+		OutSignatureLinkID: linkID,
 		OutKey:             n.conf.OutKey,
 	})
 	if err != nil {
 		return nil, err
 	}
 
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
 	return &Channel{
+		n:         n,
 		e:         e,
 		label:     label,
 		rwc:       rwc,
-		n:         n,
+		ctx:       ctx,
+		ctxCancel: ctxCancel,
 		frw:       frw,
-		write:     make(chan interface{}),
-		terminate: make(chan struct{}),
+		chWrite:   make(chan interface{}, writeBufferSize),
+		done:      make(chan struct{}),
 	}, nil
 }
 
 func (ch *Channel) close() {
-	if ch.running {
-		close(ch.terminate)
-	} else {
+	ch.ctxCancel()
+	if !ch.running {
 		ch.rwc.Close()
 	}
 }
 
 func (ch *Channel) start() {
 	ch.running = true
-	ch.n.channelsWg.Add(1)
+	ch.n.wg.Add(1)
 	go ch.run()
 }
 
 func (ch *Channel) run() {
-	defer ch.n.channelsWg.Done()
+	defer close(ch.done)
+	defer ch.n.wg.Done()
 
 	readerDone := make(chan struct{})
-	go func() {
-		defer close(readerDone)
+	go ch.runReader(readerDone)
 
-		// wait client here, in order to allow the writer goroutine to start
-		// and allow clients to write messages before starting listening to events
-		select {
-		case ch.n.events <- &EventChannelOpen{ch}:
-		case <-ch.n.terminate:
-		}
-
-		for {
-			fr, err := ch.frw.Read()
-			if err != nil {
-				// ignore parse errors
-				if _, ok := err.(*frame.ReadError); ok {
-					select {
-					case ch.n.events <- &EventParseError{err, ch}:
-					case <-ch.n.terminate:
-					}
-					continue
-				}
-				return
-			}
-
-			evt := &EventFrame{fr, ch}
-
-			if ch.n.nodeStreamRequest != nil {
-				ch.n.nodeStreamRequest.onEventFrame(evt)
-			}
-
-			select {
-			case ch.n.events <- evt:
-			case <-ch.n.terminate:
-			}
-		}
-	}()
-
+	writerTerminate := make(chan struct{})
 	writerDone := make(chan struct{})
-	go func() {
-		defer close(writerDone)
-
-		for what := range ch.write {
-			switch wh := what.(type) {
-			case message.Message:
-				ch.frw.WriteMessage(wh)
-
-			case frame.Frame:
-				ch.frw.WriteFrame(wh)
-			}
-		}
-	}()
+	go ch.runWriter(writerTerminate, writerDone)
 
 	select {
 	case <-readerDone:
-		select {
-		case ch.n.events <- &EventChannelClose{ch}:
-		case <-ch.n.terminate:
-		}
-
-		select {
-		case ch.n.channelClose <- ch:
-		case <-ch.n.terminate:
-		}
-
-		<-ch.terminate
-
-		close(ch.write)
-		<-writerDone
-
 		ch.rwc.Close()
 
-	case <-ch.terminate:
-		select {
-		case ch.n.events <- &EventChannelClose{ch}:
-		case <-ch.n.terminate:
-		}
+		close(writerTerminate)
+		<-writerDone
 
-		close(ch.write)
+	case <-ch.ctx.Done():
+		close(writerTerminate)
 		<-writerDone
 
 		ch.rwc.Close()
 		<-readerDone
+	}
+
+	ch.ctxCancel()
+
+	ch.n.pushEvent(&EventChannelClose{ch})
+	ch.n.closeChannel(ch)
+}
+
+func (ch *Channel) runReader(readerDone chan struct{}) {
+	defer close(readerDone)
+
+	// wait client here, in order to allow the writer goroutine to start
+	// and allow clients to write messages before starting listening to events
+	ch.n.pushEvent(&EventChannelOpen{ch})
+
+	for {
+		fr, err := ch.frw.Read()
+		if err != nil {
+			var eerr frame.ReadError
+			if errors.As(err, &eerr) {
+				ch.n.pushEvent(&EventParseError{err, ch})
+				continue
+			}
+			return
+		}
+
+		evt := &EventFrame{fr, ch}
+
+		if ch.n.nodeStreamRequest != nil {
+			ch.n.nodeStreamRequest.onEventFrame(evt)
+		}
+
+		ch.n.pushEvent(evt)
+	}
+}
+
+func (ch *Channel) runWriter(writerTerminate chan struct{}, writerDone chan struct{}) {
+	defer close(writerDone)
+
+	for {
+		select {
+		case what := <-ch.chWrite:
+			switch wh := what.(type) {
+			case message.Message:
+				ch.frw.WriteMessage(wh) //nolint:errcheck
+
+			case frame.Frame:
+				ch.frw.WriteFrame(wh) //nolint:errcheck
+			}
+
+		case <-writerTerminate:
+			return
+		}
 	}
 }
 
@@ -173,4 +188,12 @@ func (ch *Channel) String() string {
 // Endpoint returns the channel Endpoint.
 func (ch *Channel) Endpoint() Endpoint {
 	return ch.e
+}
+
+func (ch *Channel) write(what interface{}) {
+	select {
+	case ch.chWrite <- what:
+	case <-ch.ctx.Done():
+	default: // buffer is full
+	}
 }

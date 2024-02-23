@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type MAV_ARM_AUTH_DENIED_REASON uint32
@@ -33,35 +33,32 @@ var labels_MAV_ARM_AUTH_DENIED_REASON = map[MAV_ARM_AUTH_DENIED_REASON]string{
 	MAV_ARM_AUTH_DENIED_REASON_BAD_WEATHER:      "MAV_ARM_AUTH_DENIED_REASON_BAD_WEATHER",
 }
 
+var values_MAV_ARM_AUTH_DENIED_REASON = map[string]MAV_ARM_AUTH_DENIED_REASON{
+	"MAV_ARM_AUTH_DENIED_REASON_GENERIC":          MAV_ARM_AUTH_DENIED_REASON_GENERIC,
+	"MAV_ARM_AUTH_DENIED_REASON_NONE":             MAV_ARM_AUTH_DENIED_REASON_NONE,
+	"MAV_ARM_AUTH_DENIED_REASON_INVALID_WAYPOINT": MAV_ARM_AUTH_DENIED_REASON_INVALID_WAYPOINT,
+	"MAV_ARM_AUTH_DENIED_REASON_TIMEOUT":          MAV_ARM_AUTH_DENIED_REASON_TIMEOUT,
+	"MAV_ARM_AUTH_DENIED_REASON_AIRSPACE_IN_USE":  MAV_ARM_AUTH_DENIED_REASON_AIRSPACE_IN_USE,
+	"MAV_ARM_AUTH_DENIED_REASON_BAD_WEATHER":      MAV_ARM_AUTH_DENIED_REASON_BAD_WEATHER,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_ARM_AUTH_DENIED_REASON) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_ARM_AUTH_DENIED_REASON {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_ARM_AUTH_DENIED_REASON[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_ARM_AUTH_DENIED_REASON) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_ARM_AUTH_DENIED_REASON
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_ARM_AUTH_DENIED_REASON {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_ARM_AUTH_DENIED_REASON[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_ARM_AUTH_DENIED_REASON(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

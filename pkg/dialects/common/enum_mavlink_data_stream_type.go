@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type MAVLINK_DATA_STREAM_TYPE uint32
@@ -27,35 +27,32 @@ var labels_MAVLINK_DATA_STREAM_TYPE = map[MAVLINK_DATA_STREAM_TYPE]string{
 	MAVLINK_DATA_STREAM_IMG_PNG:    "MAVLINK_DATA_STREAM_IMG_PNG",
 }
 
+var values_MAVLINK_DATA_STREAM_TYPE = map[string]MAVLINK_DATA_STREAM_TYPE{
+	"MAVLINK_DATA_STREAM_IMG_JPEG":   MAVLINK_DATA_STREAM_IMG_JPEG,
+	"MAVLINK_DATA_STREAM_IMG_BMP":    MAVLINK_DATA_STREAM_IMG_BMP,
+	"MAVLINK_DATA_STREAM_IMG_RAW8U":  MAVLINK_DATA_STREAM_IMG_RAW8U,
+	"MAVLINK_DATA_STREAM_IMG_RAW32U": MAVLINK_DATA_STREAM_IMG_RAW32U,
+	"MAVLINK_DATA_STREAM_IMG_PGM":    MAVLINK_DATA_STREAM_IMG_PGM,
+	"MAVLINK_DATA_STREAM_IMG_PNG":    MAVLINK_DATA_STREAM_IMG_PNG,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAVLINK_DATA_STREAM_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAVLINK_DATA_STREAM_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAVLINK_DATA_STREAM_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAVLINK_DATA_STREAM_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAVLINK_DATA_STREAM_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAVLINK_DATA_STREAM_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAVLINK_DATA_STREAM_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAVLINK_DATA_STREAM_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

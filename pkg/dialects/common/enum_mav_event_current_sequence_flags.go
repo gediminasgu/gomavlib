@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Flags for CURRENT_EVENT_SEQUENCE.
@@ -19,35 +19,27 @@ var labels_MAV_EVENT_CURRENT_SEQUENCE_FLAGS = map[MAV_EVENT_CURRENT_SEQUENCE_FLA
 	MAV_EVENT_CURRENT_SEQUENCE_FLAGS_RESET: "MAV_EVENT_CURRENT_SEQUENCE_FLAGS_RESET",
 }
 
+var values_MAV_EVENT_CURRENT_SEQUENCE_FLAGS = map[string]MAV_EVENT_CURRENT_SEQUENCE_FLAGS{
+	"MAV_EVENT_CURRENT_SEQUENCE_FLAGS_RESET": MAV_EVENT_CURRENT_SEQUENCE_FLAGS_RESET,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_EVENT_CURRENT_SEQUENCE_FLAGS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_EVENT_CURRENT_SEQUENCE_FLAGS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_EVENT_CURRENT_SEQUENCE_FLAGS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_EVENT_CURRENT_SEQUENCE_FLAGS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_EVENT_CURRENT_SEQUENCE_FLAGS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_EVENT_CURRENT_SEQUENCE_FLAGS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_EVENT_CURRENT_SEQUENCE_FLAGS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_EVENT_CURRENT_SEQUENCE_FLAGS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

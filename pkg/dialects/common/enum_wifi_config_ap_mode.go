@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // WiFi Mode.
@@ -28,35 +28,30 @@ var labels_WIFI_CONFIG_AP_MODE = map[WIFI_CONFIG_AP_MODE]string{
 	WIFI_CONFIG_AP_MODE_DISABLED:  "WIFI_CONFIG_AP_MODE_DISABLED",
 }
 
+var values_WIFI_CONFIG_AP_MODE = map[string]WIFI_CONFIG_AP_MODE{
+	"WIFI_CONFIG_AP_MODE_UNDEFINED": WIFI_CONFIG_AP_MODE_UNDEFINED,
+	"WIFI_CONFIG_AP_MODE_AP":        WIFI_CONFIG_AP_MODE_AP,
+	"WIFI_CONFIG_AP_MODE_STATION":   WIFI_CONFIG_AP_MODE_STATION,
+	"WIFI_CONFIG_AP_MODE_DISABLED":  WIFI_CONFIG_AP_MODE_DISABLED,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e WIFI_CONFIG_AP_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_WIFI_CONFIG_AP_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_WIFI_CONFIG_AP_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *WIFI_CONFIG_AP_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask WIFI_CONFIG_AP_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_WIFI_CONFIG_AP_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_WIFI_CONFIG_AP_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = WIFI_CONFIG_AP_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

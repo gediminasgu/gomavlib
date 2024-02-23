@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type MAV_ODID_DESC_TYPE uint32
@@ -24,35 +24,29 @@ var labels_MAV_ODID_DESC_TYPE = map[MAV_ODID_DESC_TYPE]string{
 	MAV_ODID_DESC_TYPE_EXTENDED_STATUS: "MAV_ODID_DESC_TYPE_EXTENDED_STATUS",
 }
 
+var values_MAV_ODID_DESC_TYPE = map[string]MAV_ODID_DESC_TYPE{
+	"MAV_ODID_DESC_TYPE_TEXT":            MAV_ODID_DESC_TYPE_TEXT,
+	"MAV_ODID_DESC_TYPE_EMERGENCY":       MAV_ODID_DESC_TYPE_EMERGENCY,
+	"MAV_ODID_DESC_TYPE_EXTENDED_STATUS": MAV_ODID_DESC_TYPE_EXTENDED_STATUS,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_ODID_DESC_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_ODID_DESC_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_ODID_DESC_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_ODID_DESC_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_ODID_DESC_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_ODID_DESC_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_ODID_DESC_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_ODID_DESC_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

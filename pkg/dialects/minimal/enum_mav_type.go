@@ -4,7 +4,7 @@ package minimal
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // MAVLINK component type reported in HEARTBEAT message. Flight controllers must report the type of the vehicle on which they are mounted (e.g. MAV_TYPE_OCTOROTOR). All other components must report a value appropriate for their type (e.g. a camera must use MAV_TYPE_CAMERA).
@@ -57,7 +57,7 @@ const (
 	MAV_TYPE_VTOL_TILTROTOR MAV_TYPE = 21
 	// VTOL with separate fixed rotors for hover and cruise flight. Fuselage and wings stay (nominally) horizontal in all flight phases.
 	MAV_TYPE_VTOL_FIXEDROTOR MAV_TYPE = 22
-	// Tailsitter VTOL. Fuselage and wings orientation changes depending on flight phase: vertical for hover, horizontal for cruise. Use more specific VTOL MAV_TYPE_VTOL_DUOROTOR or MAV_TYPE_VTOL_QUADROTOR if appropriate.
+	// Tailsitter VTOL. Fuselage and wings orientation changes depending on flight phase: vertical for hover, horizontal for cruise. Use more specific VTOL MAV_TYPE_VTOL_TAILSITTER_DUOROTOR or MAV_TYPE_VTOL_TAILSITTER_QUADROTOR if appropriate.
 	MAV_TYPE_VTOL_TAILSITTER MAV_TYPE = 23
 	// Tiltwing VTOL. Fuselage stays horizontal in all flight phases. The whole wing, along with any attached engine, can tilt between vertical and horizontal mode.
 	MAV_TYPE_VTOL_TILTWING MAV_TYPE = 24
@@ -148,35 +148,70 @@ var labels_MAV_TYPE = map[MAV_TYPE]string{
 	MAV_TYPE_GENERIC_MULTIROTOR:        "MAV_TYPE_GENERIC_MULTIROTOR",
 }
 
+var values_MAV_TYPE = map[string]MAV_TYPE{
+	"MAV_TYPE_GENERIC":                   MAV_TYPE_GENERIC,
+	"MAV_TYPE_FIXED_WING":                MAV_TYPE_FIXED_WING,
+	"MAV_TYPE_QUADROTOR":                 MAV_TYPE_QUADROTOR,
+	"MAV_TYPE_COAXIAL":                   MAV_TYPE_COAXIAL,
+	"MAV_TYPE_HELICOPTER":                MAV_TYPE_HELICOPTER,
+	"MAV_TYPE_ANTENNA_TRACKER":           MAV_TYPE_ANTENNA_TRACKER,
+	"MAV_TYPE_GCS":                       MAV_TYPE_GCS,
+	"MAV_TYPE_AIRSHIP":                   MAV_TYPE_AIRSHIP,
+	"MAV_TYPE_FREE_BALLOON":              MAV_TYPE_FREE_BALLOON,
+	"MAV_TYPE_ROCKET":                    MAV_TYPE_ROCKET,
+	"MAV_TYPE_GROUND_ROVER":              MAV_TYPE_GROUND_ROVER,
+	"MAV_TYPE_SURFACE_BOAT":              MAV_TYPE_SURFACE_BOAT,
+	"MAV_TYPE_SUBMARINE":                 MAV_TYPE_SUBMARINE,
+	"MAV_TYPE_HEXAROTOR":                 MAV_TYPE_HEXAROTOR,
+	"MAV_TYPE_OCTOROTOR":                 MAV_TYPE_OCTOROTOR,
+	"MAV_TYPE_TRICOPTER":                 MAV_TYPE_TRICOPTER,
+	"MAV_TYPE_FLAPPING_WING":             MAV_TYPE_FLAPPING_WING,
+	"MAV_TYPE_KITE":                      MAV_TYPE_KITE,
+	"MAV_TYPE_ONBOARD_CONTROLLER":        MAV_TYPE_ONBOARD_CONTROLLER,
+	"MAV_TYPE_VTOL_TAILSITTER_DUOROTOR":  MAV_TYPE_VTOL_TAILSITTER_DUOROTOR,
+	"MAV_TYPE_VTOL_TAILSITTER_QUADROTOR": MAV_TYPE_VTOL_TAILSITTER_QUADROTOR,
+	"MAV_TYPE_VTOL_TILTROTOR":            MAV_TYPE_VTOL_TILTROTOR,
+	"MAV_TYPE_VTOL_FIXEDROTOR":           MAV_TYPE_VTOL_FIXEDROTOR,
+	"MAV_TYPE_VTOL_TAILSITTER":           MAV_TYPE_VTOL_TAILSITTER,
+	"MAV_TYPE_VTOL_TILTWING":             MAV_TYPE_VTOL_TILTWING,
+	"MAV_TYPE_VTOL_RESERVED5":            MAV_TYPE_VTOL_RESERVED5,
+	"MAV_TYPE_GIMBAL":                    MAV_TYPE_GIMBAL,
+	"MAV_TYPE_ADSB":                      MAV_TYPE_ADSB,
+	"MAV_TYPE_PARAFOIL":                  MAV_TYPE_PARAFOIL,
+	"MAV_TYPE_DODECAROTOR":               MAV_TYPE_DODECAROTOR,
+	"MAV_TYPE_CAMERA":                    MAV_TYPE_CAMERA,
+	"MAV_TYPE_CHARGING_STATION":          MAV_TYPE_CHARGING_STATION,
+	"MAV_TYPE_FLARM":                     MAV_TYPE_FLARM,
+	"MAV_TYPE_SERVO":                     MAV_TYPE_SERVO,
+	"MAV_TYPE_ODID":                      MAV_TYPE_ODID,
+	"MAV_TYPE_DECAROTOR":                 MAV_TYPE_DECAROTOR,
+	"MAV_TYPE_BATTERY":                   MAV_TYPE_BATTERY,
+	"MAV_TYPE_PARACHUTE":                 MAV_TYPE_PARACHUTE,
+	"MAV_TYPE_LOG":                       MAV_TYPE_LOG,
+	"MAV_TYPE_OSD":                       MAV_TYPE_OSD,
+	"MAV_TYPE_IMU":                       MAV_TYPE_IMU,
+	"MAV_TYPE_GPS":                       MAV_TYPE_GPS,
+	"MAV_TYPE_WINCH":                     MAV_TYPE_WINCH,
+	"MAV_TYPE_GENERIC_MULTIROTOR":        MAV_TYPE_GENERIC_MULTIROTOR,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

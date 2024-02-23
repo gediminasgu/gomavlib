@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // A mapping of sub flight modes for custom_mode field of heartbeat.
@@ -34,35 +34,35 @@ var labels_SUB_MODE = map[SUB_MODE]string{
 	SUB_MODE_MANUAL:    "SUB_MODE_MANUAL",
 }
 
+var values_SUB_MODE = map[string]SUB_MODE{
+	"SUB_MODE_STABILIZE": SUB_MODE_STABILIZE,
+	"SUB_MODE_ACRO":      SUB_MODE_ACRO,
+	"SUB_MODE_ALT_HOLD":  SUB_MODE_ALT_HOLD,
+	"SUB_MODE_AUTO":      SUB_MODE_AUTO,
+	"SUB_MODE_GUIDED":    SUB_MODE_GUIDED,
+	"SUB_MODE_CIRCLE":    SUB_MODE_CIRCLE,
+	"SUB_MODE_SURFACE":   SUB_MODE_SURFACE,
+	"SUB_MODE_POSHOLD":   SUB_MODE_POSHOLD,
+	"SUB_MODE_MANUAL":    SUB_MODE_MANUAL,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e SUB_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_SUB_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_SUB_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *SUB_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask SUB_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_SUB_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_SUB_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = SUB_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

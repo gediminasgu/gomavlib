@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type MAV_ODID_TIME_ACC uint32
@@ -63,35 +63,42 @@ var labels_MAV_ODID_TIME_ACC = map[MAV_ODID_TIME_ACC]string{
 	MAV_ODID_TIME_ACC_1_5_SECOND: "MAV_ODID_TIME_ACC_1_5_SECOND",
 }
 
+var values_MAV_ODID_TIME_ACC = map[string]MAV_ODID_TIME_ACC{
+	"MAV_ODID_TIME_ACC_UNKNOWN":    MAV_ODID_TIME_ACC_UNKNOWN,
+	"MAV_ODID_TIME_ACC_0_1_SECOND": MAV_ODID_TIME_ACC_0_1_SECOND,
+	"MAV_ODID_TIME_ACC_0_2_SECOND": MAV_ODID_TIME_ACC_0_2_SECOND,
+	"MAV_ODID_TIME_ACC_0_3_SECOND": MAV_ODID_TIME_ACC_0_3_SECOND,
+	"MAV_ODID_TIME_ACC_0_4_SECOND": MAV_ODID_TIME_ACC_0_4_SECOND,
+	"MAV_ODID_TIME_ACC_0_5_SECOND": MAV_ODID_TIME_ACC_0_5_SECOND,
+	"MAV_ODID_TIME_ACC_0_6_SECOND": MAV_ODID_TIME_ACC_0_6_SECOND,
+	"MAV_ODID_TIME_ACC_0_7_SECOND": MAV_ODID_TIME_ACC_0_7_SECOND,
+	"MAV_ODID_TIME_ACC_0_8_SECOND": MAV_ODID_TIME_ACC_0_8_SECOND,
+	"MAV_ODID_TIME_ACC_0_9_SECOND": MAV_ODID_TIME_ACC_0_9_SECOND,
+	"MAV_ODID_TIME_ACC_1_0_SECOND": MAV_ODID_TIME_ACC_1_0_SECOND,
+	"MAV_ODID_TIME_ACC_1_1_SECOND": MAV_ODID_TIME_ACC_1_1_SECOND,
+	"MAV_ODID_TIME_ACC_1_2_SECOND": MAV_ODID_TIME_ACC_1_2_SECOND,
+	"MAV_ODID_TIME_ACC_1_3_SECOND": MAV_ODID_TIME_ACC_1_3_SECOND,
+	"MAV_ODID_TIME_ACC_1_4_SECOND": MAV_ODID_TIME_ACC_1_4_SECOND,
+	"MAV_ODID_TIME_ACC_1_5_SECOND": MAV_ODID_TIME_ACC_1_5_SECOND,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_ODID_TIME_ACC) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_ODID_TIME_ACC {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_ODID_TIME_ACC[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_ODID_TIME_ACC) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_ODID_TIME_ACC
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_ODID_TIME_ACC {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_ODID_TIME_ACC[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_ODID_TIME_ACC(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

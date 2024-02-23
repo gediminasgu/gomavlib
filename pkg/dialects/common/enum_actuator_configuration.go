@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Actuator configuration, used to change a setting on an actuator. Component information metadata can be used to know which outputs support which commands.
@@ -34,35 +34,32 @@ var labels_ACTUATOR_CONFIGURATION = map[ACTUATOR_CONFIGURATION]string{
 	ACTUATOR_CONFIGURATION_SPIN_DIRECTION2: "ACTUATOR_CONFIGURATION_SPIN_DIRECTION2",
 }
 
+var values_ACTUATOR_CONFIGURATION = map[string]ACTUATOR_CONFIGURATION{
+	"ACTUATOR_CONFIGURATION_NONE":            ACTUATOR_CONFIGURATION_NONE,
+	"ACTUATOR_CONFIGURATION_BEEP":            ACTUATOR_CONFIGURATION_BEEP,
+	"ACTUATOR_CONFIGURATION_3D_MODE_ON":      ACTUATOR_CONFIGURATION_3D_MODE_ON,
+	"ACTUATOR_CONFIGURATION_3D_MODE_OFF":     ACTUATOR_CONFIGURATION_3D_MODE_OFF,
+	"ACTUATOR_CONFIGURATION_SPIN_DIRECTION1": ACTUATOR_CONFIGURATION_SPIN_DIRECTION1,
+	"ACTUATOR_CONFIGURATION_SPIN_DIRECTION2": ACTUATOR_CONFIGURATION_SPIN_DIRECTION2,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e ACTUATOR_CONFIGURATION) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_ACTUATOR_CONFIGURATION {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_ACTUATOR_CONFIGURATION[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *ACTUATOR_CONFIGURATION) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask ACTUATOR_CONFIGURATION
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_ACTUATOR_CONFIGURATION {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_ACTUATOR_CONFIGURATION[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = ACTUATOR_CONFIGURATION(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

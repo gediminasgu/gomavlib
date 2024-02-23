@@ -4,7 +4,7 @@ package ualberta
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Navigation filter mode
@@ -27,35 +27,30 @@ var labels_UALBERTA_NAV_MODE = map[UALBERTA_NAV_MODE]string{
 	NAV_INS_GPS:      "NAV_INS_GPS",
 }
 
+var values_UALBERTA_NAV_MODE = map[string]UALBERTA_NAV_MODE{
+	"NAV_AHRS_INIT":    NAV_AHRS_INIT,
+	"NAV_AHRS":         NAV_AHRS,
+	"NAV_INS_GPS_INIT": NAV_INS_GPS_INIT,
+	"NAV_INS_GPS":      NAV_INS_GPS,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e UALBERTA_NAV_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_UALBERTA_NAV_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_UALBERTA_NAV_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *UALBERTA_NAV_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask UALBERTA_NAV_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_UALBERTA_NAV_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_UALBERTA_NAV_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = UALBERTA_NAV_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

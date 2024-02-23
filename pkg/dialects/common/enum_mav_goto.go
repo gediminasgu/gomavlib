@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Actions that may be specified in MAV_CMD_OVERRIDE_GOTO to override mission execution.
@@ -28,35 +28,30 @@ var labels_MAV_GOTO = map[MAV_GOTO]string{
 	MAV_GOTO_HOLD_AT_SPECIFIED_POSITION: "MAV_GOTO_HOLD_AT_SPECIFIED_POSITION",
 }
 
+var values_MAV_GOTO = map[string]MAV_GOTO{
+	"MAV_GOTO_DO_HOLD":                    MAV_GOTO_DO_HOLD,
+	"MAV_GOTO_DO_CONTINUE":                MAV_GOTO_DO_CONTINUE,
+	"MAV_GOTO_HOLD_AT_CURRENT_POSITION":   MAV_GOTO_HOLD_AT_CURRENT_POSITION,
+	"MAV_GOTO_HOLD_AT_SPECIFIED_POSITION": MAV_GOTO_HOLD_AT_SPECIFIED_POSITION,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_GOTO) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_GOTO {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_GOTO[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_GOTO) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_GOTO
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_GOTO {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_GOTO[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_GOTO(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

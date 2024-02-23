@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type GOPRO_CAPTURE_MODE uint32
@@ -39,35 +39,34 @@ var labels_GOPRO_CAPTURE_MODE = map[GOPRO_CAPTURE_MODE]string{
 	GOPRO_CAPTURE_MODE_UNKNOWN:    "GOPRO_CAPTURE_MODE_UNKNOWN",
 }
 
+var values_GOPRO_CAPTURE_MODE = map[string]GOPRO_CAPTURE_MODE{
+	"GOPRO_CAPTURE_MODE_VIDEO":      GOPRO_CAPTURE_MODE_VIDEO,
+	"GOPRO_CAPTURE_MODE_PHOTO":      GOPRO_CAPTURE_MODE_PHOTO,
+	"GOPRO_CAPTURE_MODE_BURST":      GOPRO_CAPTURE_MODE_BURST,
+	"GOPRO_CAPTURE_MODE_TIME_LAPSE": GOPRO_CAPTURE_MODE_TIME_LAPSE,
+	"GOPRO_CAPTURE_MODE_MULTI_SHOT": GOPRO_CAPTURE_MODE_MULTI_SHOT,
+	"GOPRO_CAPTURE_MODE_PLAYBACK":   GOPRO_CAPTURE_MODE_PLAYBACK,
+	"GOPRO_CAPTURE_MODE_SETUP":      GOPRO_CAPTURE_MODE_SETUP,
+	"GOPRO_CAPTURE_MODE_UNKNOWN":    GOPRO_CAPTURE_MODE_UNKNOWN,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GOPRO_CAPTURE_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_GOPRO_CAPTURE_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_GOPRO_CAPTURE_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *GOPRO_CAPTURE_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask GOPRO_CAPTURE_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_GOPRO_CAPTURE_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_GOPRO_CAPTURE_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = GOPRO_CAPTURE_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

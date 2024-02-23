@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type GOPRO_BURST_RATE uint32
@@ -42,35 +42,35 @@ var labels_GOPRO_BURST_RATE = map[GOPRO_BURST_RATE]string{
 	GOPRO_BURST_RATE_30_IN_6_SECOND: "GOPRO_BURST_RATE_30_IN_6_SECOND",
 }
 
+var values_GOPRO_BURST_RATE = map[string]GOPRO_BURST_RATE{
+	"GOPRO_BURST_RATE_3_IN_1_SECOND":  GOPRO_BURST_RATE_3_IN_1_SECOND,
+	"GOPRO_BURST_RATE_5_IN_1_SECOND":  GOPRO_BURST_RATE_5_IN_1_SECOND,
+	"GOPRO_BURST_RATE_10_IN_1_SECOND": GOPRO_BURST_RATE_10_IN_1_SECOND,
+	"GOPRO_BURST_RATE_10_IN_2_SECOND": GOPRO_BURST_RATE_10_IN_2_SECOND,
+	"GOPRO_BURST_RATE_10_IN_3_SECOND": GOPRO_BURST_RATE_10_IN_3_SECOND,
+	"GOPRO_BURST_RATE_30_IN_1_SECOND": GOPRO_BURST_RATE_30_IN_1_SECOND,
+	"GOPRO_BURST_RATE_30_IN_2_SECOND": GOPRO_BURST_RATE_30_IN_2_SECOND,
+	"GOPRO_BURST_RATE_30_IN_3_SECOND": GOPRO_BURST_RATE_30_IN_3_SECOND,
+	"GOPRO_BURST_RATE_30_IN_6_SECOND": GOPRO_BURST_RATE_30_IN_6_SECOND,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GOPRO_BURST_RATE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_GOPRO_BURST_RATE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_GOPRO_BURST_RATE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *GOPRO_BURST_RATE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask GOPRO_BURST_RATE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_GOPRO_BURST_RATE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_GOPRO_BURST_RATE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = GOPRO_BURST_RATE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

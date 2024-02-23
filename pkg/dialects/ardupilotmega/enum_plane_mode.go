@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // A mapping of plane flight modes for custom_mode field of heartbeat.
@@ -64,35 +64,50 @@ var labels_PLANE_MODE = map[PLANE_MODE]string{
 	PLANE_MODE_THERMAL:       "PLANE_MODE_THERMAL",
 }
 
+var values_PLANE_MODE = map[string]PLANE_MODE{
+	"PLANE_MODE_MANUAL":        PLANE_MODE_MANUAL,
+	"PLANE_MODE_CIRCLE":        PLANE_MODE_CIRCLE,
+	"PLANE_MODE_STABILIZE":     PLANE_MODE_STABILIZE,
+	"PLANE_MODE_TRAINING":      PLANE_MODE_TRAINING,
+	"PLANE_MODE_ACRO":          PLANE_MODE_ACRO,
+	"PLANE_MODE_FLY_BY_WIRE_A": PLANE_MODE_FLY_BY_WIRE_A,
+	"PLANE_MODE_FLY_BY_WIRE_B": PLANE_MODE_FLY_BY_WIRE_B,
+	"PLANE_MODE_CRUISE":        PLANE_MODE_CRUISE,
+	"PLANE_MODE_AUTOTUNE":      PLANE_MODE_AUTOTUNE,
+	"PLANE_MODE_AUTO":          PLANE_MODE_AUTO,
+	"PLANE_MODE_RTL":           PLANE_MODE_RTL,
+	"PLANE_MODE_LOITER":        PLANE_MODE_LOITER,
+	"PLANE_MODE_TAKEOFF":       PLANE_MODE_TAKEOFF,
+	"PLANE_MODE_AVOID_ADSB":    PLANE_MODE_AVOID_ADSB,
+	"PLANE_MODE_GUIDED":        PLANE_MODE_GUIDED,
+	"PLANE_MODE_INITIALIZING":  PLANE_MODE_INITIALIZING,
+	"PLANE_MODE_QSTABILIZE":    PLANE_MODE_QSTABILIZE,
+	"PLANE_MODE_QHOVER":        PLANE_MODE_QHOVER,
+	"PLANE_MODE_QLOITER":       PLANE_MODE_QLOITER,
+	"PLANE_MODE_QLAND":         PLANE_MODE_QLAND,
+	"PLANE_MODE_QRTL":          PLANE_MODE_QRTL,
+	"PLANE_MODE_QAUTOTUNE":     PLANE_MODE_QAUTOTUNE,
+	"PLANE_MODE_QACRO":         PLANE_MODE_QACRO,
+	"PLANE_MODE_THERMAL":       PLANE_MODE_THERMAL,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e PLANE_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_PLANE_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_PLANE_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *PLANE_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask PLANE_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_PLANE_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_PLANE_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = PLANE_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

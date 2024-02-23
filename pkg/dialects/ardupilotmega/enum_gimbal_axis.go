@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type GIMBAL_AXIS uint32
@@ -24,35 +24,29 @@ var labels_GIMBAL_AXIS = map[GIMBAL_AXIS]string{
 	GIMBAL_AXIS_ROLL:  "GIMBAL_AXIS_ROLL",
 }
 
+var values_GIMBAL_AXIS = map[string]GIMBAL_AXIS{
+	"GIMBAL_AXIS_YAW":   GIMBAL_AXIS_YAW,
+	"GIMBAL_AXIS_PITCH": GIMBAL_AXIS_PITCH,
+	"GIMBAL_AXIS_ROLL":  GIMBAL_AXIS_ROLL,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GIMBAL_AXIS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_GIMBAL_AXIS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_GIMBAL_AXIS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *GIMBAL_AXIS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask GIMBAL_AXIS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_GIMBAL_AXIS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_GIMBAL_AXIS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = GIMBAL_AXIS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

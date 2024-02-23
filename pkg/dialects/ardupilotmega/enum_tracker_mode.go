@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // A mapping of antenna tracker flight modes for custom_mode field of heartbeat.
@@ -28,35 +28,32 @@ var labels_TRACKER_MODE = map[TRACKER_MODE]string{
 	TRACKER_MODE_INITIALIZING: "TRACKER_MODE_INITIALIZING",
 }
 
+var values_TRACKER_MODE = map[string]TRACKER_MODE{
+	"TRACKER_MODE_MANUAL":       TRACKER_MODE_MANUAL,
+	"TRACKER_MODE_STOP":         TRACKER_MODE_STOP,
+	"TRACKER_MODE_SCAN":         TRACKER_MODE_SCAN,
+	"TRACKER_MODE_SERVO_TEST":   TRACKER_MODE_SERVO_TEST,
+	"TRACKER_MODE_AUTO":         TRACKER_MODE_AUTO,
+	"TRACKER_MODE_INITIALIZING": TRACKER_MODE_INITIALIZING,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e TRACKER_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_TRACKER_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_TRACKER_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *TRACKER_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask TRACKER_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_TRACKER_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_TRACKER_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = TRACKER_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

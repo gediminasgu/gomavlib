@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Type of mission items being requested/sent in mission protocol.
@@ -28,35 +28,30 @@ var labels_MAV_MISSION_TYPE = map[MAV_MISSION_TYPE]string{
 	MAV_MISSION_TYPE_ALL:     "MAV_MISSION_TYPE_ALL",
 }
 
+var values_MAV_MISSION_TYPE = map[string]MAV_MISSION_TYPE{
+	"MAV_MISSION_TYPE_MISSION": MAV_MISSION_TYPE_MISSION,
+	"MAV_MISSION_TYPE_FENCE":   MAV_MISSION_TYPE_FENCE,
+	"MAV_MISSION_TYPE_RALLY":   MAV_MISSION_TYPE_RALLY,
+	"MAV_MISSION_TYPE_ALL":     MAV_MISSION_TYPE_ALL,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_MISSION_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_MISSION_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_MISSION_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_MISSION_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_MISSION_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_MISSION_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_MISSION_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_MISSION_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

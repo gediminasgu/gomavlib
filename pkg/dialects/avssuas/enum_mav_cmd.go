@@ -4,14 +4,14 @@ package avssuas
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Commands to be executed by the MAV. They can be executed on user request, or as part of a mission script. If the action is used in a mission, the parameter mapping to the waypoint/mission message is as follows: Param 1, Param 2, Param 3, Param 4, X: Param 5, Y:Param 6, Z:Param 7. This command list is similar what ARINC 424 is for commercial aircraft: A data format how to interpret waypoint/mission data. NaN and INT32_MAX may be used in float/integer params (respectively) to indicate optional/default values (e.g. to use the component's current yaw or latitude rather than a specific value). See https://mavlink.io/en/guide/xml_schema.html#MAV_CMD for information about the structure of the MAV_CMD entries
 type MAV_CMD uint32
 
 const (
-	// Navigate to waypoint.
+	// Navigate to waypoint. This is intended for use in missions (for guided commands outside of missions use MAV_CMD_DO_REPOSITION).
 	MAV_CMD_NAV_WAYPOINT MAV_CMD = 16
 	// Loiter around this waypoint an unlimited amount of time
 	MAV_CMD_NAV_LOITER_UNLIM MAV_CMD = 17
@@ -73,7 +73,7 @@ const (
 	MAV_CMD_DO_SET_MODE MAV_CMD = 176
 	// Jump to the desired command in the mission list.  Repeat this action only the specified number of times
 	MAV_CMD_DO_JUMP MAV_CMD = 177
-	// Change speed and/or throttle set points. The value persists until it is overridden or there is a mode change.
+	// Change speed and/or throttle set points. The value persists until it is overridden or there is a mode change
 	MAV_CMD_DO_CHANGE_SPEED MAV_CMD = 178
 	// Sets the home position to either to the current position or a specified position.
 	// The home position is the default position that the system will return to and land on.
@@ -91,7 +91,7 @@ const (
 	// Cycle a between its nominal setting and a desired PWM for a desired number of cycles with a desired period.
 	MAV_CMD_DO_REPEAT_SERVO MAV_CMD = 184
 	// Terminate flight immediately.
-	// Flight termination immediately and irreversably terminates the current flight, returning the vehicle to ground.
+	// Flight termination immediately and irreversibly terminates the current flight, returning the vehicle to ground.
 	// The vehicle will ignore RC or other input until it has been power-cycled.
 	// Termination may trigger safety measures, including: disabling motors and deployment of parachute on multicopters, and setting flight surfaces to initiate a landing pattern on fixed-wing).
 	// On multicopters without a parachute it may trigger a crash landing.
@@ -110,7 +110,7 @@ const (
 	MAV_CMD_DO_RALLY_LAND MAV_CMD = 190
 	// Mission command to safely abort an autonomous landing.
 	MAV_CMD_DO_GO_AROUND MAV_CMD = 191
-	// Reposition the vehicle to a specific WGS84 global position.
+	// Reposition the vehicle to a specific WGS84 global position. This command is intended for guided commands (for missions use MAV_CMD_NAV_WAYPOINT instead).
 	MAV_CMD_DO_REPOSITION MAV_CMD = 192
 	// If in a GPS controlled position mode, hold the current position or continue.
 	MAV_CMD_DO_PAUSE_CONTINUE MAV_CMD = 193
@@ -203,7 +203,7 @@ const (
 	// The results of the checks are usually then reported in SYS_STATUS messages (this is system-specific).
 	// The command should return MAV_RESULT_TEMPORARILY_REJECTED if the system is already armed.
 	MAV_CMD_RUN_PREARM_CHECKS MAV_CMD = 401
-	// Turns illuminators ON/OFF. An illuminator is a light source that is used for lighting up dark areas external to the sytstem: e.g. a torch or searchlight (as opposed to a light source for illuminating the system itself, e.g. an indicator light).
+	// Turns illuminators ON/OFF. An illuminator is a light source that is used for lighting up dark areas external to the system: e.g. a torch or searchlight (as opposed to a light source for illuminating the system itself, e.g. an indicator light).
 	MAV_CMD_ILLUMINATOR_ON_OFF MAV_CMD = 405
 	// Request the home position from the vehicle.
 	// The vehicle will ACK the command and then emit the HOME_POSITION message.
@@ -257,9 +257,27 @@ const (
 	MAV_CMD_DO_GIMBAL_MANAGER_PITCHYAW MAV_CMD = 1000
 	// Gimbal configuration to set which sysid/compid is in primary and secondary control.
 	MAV_CMD_DO_GIMBAL_MANAGER_CONFIGURE MAV_CMD = 1001
-	// Start image capture sequence. Sends CAMERA_IMAGE_CAPTURED after each capture. Use NaN for reserved values.
+	// Start image capture sequence. CAMERA_IMAGE_CAPTURED must be emitted after each capture.
+	// Param1 (id) may be used to specify the target camera: 0: all cameras, 1 to 6: autopilot-connected cameras, 7-255: MAVLink camera component ID.
+	// It is needed in order to target specific cameras connected to the autopilot, or specific sensors in a multi-sensor camera (neither of which have a distinct MAVLink component ID).
+	// It is also needed to specify the target camera in missions.
+	// When used in a mission, an autopilot should execute the MAV_CMD for a specified local camera (param1 = 1-6), or resend it as a command if it is intended for a MAVLink camera (param1 = 7 - 255), setting the command's target_component as the param1 value (and setting param1 in the command to zero).
+	// If the param1 is 0 the autopilot should do both.
+	// When sent in a command the target MAVLink address is set using target_component.
+	// If addressed specifically to an autopilot: param1 should be used in the same way as it is for missions (though command should NACK with MAV_RESULT_DENIED if a specified local camera does not exist).
+	// If addressed to a MAVLink camera, param 1 can be used to address all cameras (0), or to separately address 1 to 7 individual sensors. Other values should be NACKed with MAV_RESULT_DENIED.
+	// If the command is broadcast (target_component is 0) then param 1 should be set to 0 (any other value should be NACKED with MAV_RESULT_DENIED). An autopilot would trigger any local cameras and forward the command to all channels.
 	MAV_CMD_IMAGE_START_CAPTURE MAV_CMD = 2000
-	// Stop image capture sequence Use NaN for reserved values.
+	// Stop image capture sequence.
+	// Param1 (id) may be used to specify the target camera: 0: all cameras, 1 to 6: autopilot-connected cameras, 7-255: MAVLink camera component ID.
+	// It is needed in order to target specific cameras connected to the autopilot, or specific sensors in a multi-sensor camera (neither of which have a distinct MAVLink component ID).
+	// It is also needed to specify the target camera in missions.
+	// When used in a mission, an autopilot should execute the MAV_CMD for a specified local camera (param1 = 1-6), or resend it as a command if it is intended for a MAVLink camera (param1 = 7 - 255), setting the command's target_component as the param1 value (and setting param1 in the command to zero).
+	// If the param1 is 0 the autopilot should do both.
+	// When sent in a command the target MAVLink address is set using target_component.
+	// If addressed specifically to an autopilot: param1 should be used in the same way as it is for missions (though command should NACK with MAV_RESULT_DENIED if a specified local camera does not exist).
+	// If addressed to a MAVLink camera, param1 can be used to address all cameras (0), or to separately address 1 to 7 individual sensors. Other values should be NACKed with MAV_RESULT_DENIED.
+	// If the command is broadcast (target_component is 0) then param 1 should be set to 0 (any other value should be NACKED with MAV_RESULT_DENIED). An autopilot would trigger any local cameras and forward the command to all channels.
 	MAV_CMD_IMAGE_STOP_CAPTURE MAV_CMD = 2001
 	// Re-request a CAMERA_IMAGE_CAPTURED message.
 	MAV_CMD_REQUEST_CAMERA_IMAGE_CAPTURE MAV_CMD = 2002
@@ -318,6 +336,8 @@ const (
 	MAV_CMD_NAV_RALLY_POINT MAV_CMD = 5100
 	// Commands the vehicle to respond with a sequence of messages UAVCAN_NODE_INFO, one message per every UAVCAN node that is online. Note that some of the response messages can be lost, which the receiver can detect easily by checking whether every received UAVCAN_NODE_STATUS has a matching message UAVCAN_NODE_INFO received earlier; if not, this command should be sent again in order to request re-transmission of the node information messages.
 	MAV_CMD_UAVCAN_GET_NODE_INFO MAV_CMD = 5200
+	// Change state of safety switch.
+	MAV_CMD_DO_SET_SAFETY_SWITCH_STATE MAV_CMD = 5300
 	// Trigger the start of an ADSB-out IDENT. This should only be used when requested to do so by an Air Traffic Controller in controlled airspace. This starts the IDENT which is then typically held for 18 seconds by the hardware per the Mode A, C, and S transponder spec.
 	MAV_CMD_DO_ADSB_OUT_IDENT MAV_CMD = 10001
 	// Deploy payload on a Lat / Lon / Alt position. This includes the navigation to reach the required release position and velocity.
@@ -328,6 +348,8 @@ const (
 	MAV_CMD_FIXED_MAG_CAL_YAW MAV_CMD = 42006
 	// Command to operate winch.
 	MAV_CMD_DO_WINCH MAV_CMD = 42600
+	// Provide an external position estimate for use when dead-reckoning. This is meant to be used for occasional position resets that may be provided by a external system such as a remote pilot using landmarks over a video link.
+	MAV_CMD_EXTERNAL_POSITION_ESTIMATE MAV_CMD = 43003
 	// User defined waypoint item. Ground Station will show the Vehicle as flying through this item.
 	MAV_CMD_WAYPOINT_USER_1 MAV_CMD = 31000
 	// User defined waypoint item. Ground Station will show the Vehicle as flying through this item.
@@ -515,11 +537,13 @@ var labels_MAV_CMD = map[MAV_CMD]string{
 	MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION:         "MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION",
 	MAV_CMD_NAV_RALLY_POINT:                    "MAV_CMD_NAV_RALLY_POINT",
 	MAV_CMD_UAVCAN_GET_NODE_INFO:               "MAV_CMD_UAVCAN_GET_NODE_INFO",
+	MAV_CMD_DO_SET_SAFETY_SWITCH_STATE:         "MAV_CMD_DO_SET_SAFETY_SWITCH_STATE",
 	MAV_CMD_DO_ADSB_OUT_IDENT:                  "MAV_CMD_DO_ADSB_OUT_IDENT",
 	MAV_CMD_PAYLOAD_PREPARE_DEPLOY:             "MAV_CMD_PAYLOAD_PREPARE_DEPLOY",
 	MAV_CMD_PAYLOAD_CONTROL_DEPLOY:             "MAV_CMD_PAYLOAD_CONTROL_DEPLOY",
 	MAV_CMD_FIXED_MAG_CAL_YAW:                  "MAV_CMD_FIXED_MAG_CAL_YAW",
 	MAV_CMD_DO_WINCH:                           "MAV_CMD_DO_WINCH",
+	MAV_CMD_EXTERNAL_POSITION_ESTIMATE:         "MAV_CMD_EXTERNAL_POSITION_ESTIMATE",
 	MAV_CMD_WAYPOINT_USER_1:                    "MAV_CMD_WAYPOINT_USER_1",
 	MAV_CMD_WAYPOINT_USER_2:                    "MAV_CMD_WAYPOINT_USER_2",
 	MAV_CMD_WAYPOINT_USER_3:                    "MAV_CMD_WAYPOINT_USER_3",
@@ -545,35 +569,194 @@ var labels_MAV_CMD = map[MAV_CMD]string{
 	MAV_CMD_PRS_SHUTDOWN:                       "MAV_CMD_PRS_SHUTDOWN",
 }
 
+var values_MAV_CMD = map[string]MAV_CMD{
+	"MAV_CMD_NAV_WAYPOINT":                       MAV_CMD_NAV_WAYPOINT,
+	"MAV_CMD_NAV_LOITER_UNLIM":                   MAV_CMD_NAV_LOITER_UNLIM,
+	"MAV_CMD_NAV_LOITER_TURNS":                   MAV_CMD_NAV_LOITER_TURNS,
+	"MAV_CMD_NAV_LOITER_TIME":                    MAV_CMD_NAV_LOITER_TIME,
+	"MAV_CMD_NAV_RETURN_TO_LAUNCH":               MAV_CMD_NAV_RETURN_TO_LAUNCH,
+	"MAV_CMD_NAV_LAND":                           MAV_CMD_NAV_LAND,
+	"MAV_CMD_NAV_TAKEOFF":                        MAV_CMD_NAV_TAKEOFF,
+	"MAV_CMD_NAV_LAND_LOCAL":                     MAV_CMD_NAV_LAND_LOCAL,
+	"MAV_CMD_NAV_TAKEOFF_LOCAL":                  MAV_CMD_NAV_TAKEOFF_LOCAL,
+	"MAV_CMD_NAV_FOLLOW":                         MAV_CMD_NAV_FOLLOW,
+	"MAV_CMD_NAV_CONTINUE_AND_CHANGE_ALT":        MAV_CMD_NAV_CONTINUE_AND_CHANGE_ALT,
+	"MAV_CMD_NAV_LOITER_TO_ALT":                  MAV_CMD_NAV_LOITER_TO_ALT,
+	"MAV_CMD_DO_FOLLOW":                          MAV_CMD_DO_FOLLOW,
+	"MAV_CMD_DO_FOLLOW_REPOSITION":               MAV_CMD_DO_FOLLOW_REPOSITION,
+	"MAV_CMD_DO_ORBIT":                           MAV_CMD_DO_ORBIT,
+	"MAV_CMD_NAV_ROI":                            MAV_CMD_NAV_ROI,
+	"MAV_CMD_NAV_PATHPLANNING":                   MAV_CMD_NAV_PATHPLANNING,
+	"MAV_CMD_NAV_SPLINE_WAYPOINT":                MAV_CMD_NAV_SPLINE_WAYPOINT,
+	"MAV_CMD_NAV_VTOL_TAKEOFF":                   MAV_CMD_NAV_VTOL_TAKEOFF,
+	"MAV_CMD_NAV_VTOL_LAND":                      MAV_CMD_NAV_VTOL_LAND,
+	"MAV_CMD_NAV_GUIDED_ENABLE":                  MAV_CMD_NAV_GUIDED_ENABLE,
+	"MAV_CMD_NAV_DELAY":                          MAV_CMD_NAV_DELAY,
+	"MAV_CMD_NAV_PAYLOAD_PLACE":                  MAV_CMD_NAV_PAYLOAD_PLACE,
+	"MAV_CMD_NAV_LAST":                           MAV_CMD_NAV_LAST,
+	"MAV_CMD_CONDITION_DELAY":                    MAV_CMD_CONDITION_DELAY,
+	"MAV_CMD_CONDITION_CHANGE_ALT":               MAV_CMD_CONDITION_CHANGE_ALT,
+	"MAV_CMD_CONDITION_DISTANCE":                 MAV_CMD_CONDITION_DISTANCE,
+	"MAV_CMD_CONDITION_YAW":                      MAV_CMD_CONDITION_YAW,
+	"MAV_CMD_CONDITION_LAST":                     MAV_CMD_CONDITION_LAST,
+	"MAV_CMD_DO_SET_MODE":                        MAV_CMD_DO_SET_MODE,
+	"MAV_CMD_DO_JUMP":                            MAV_CMD_DO_JUMP,
+	"MAV_CMD_DO_CHANGE_SPEED":                    MAV_CMD_DO_CHANGE_SPEED,
+	"MAV_CMD_DO_SET_HOME":                        MAV_CMD_DO_SET_HOME,
+	"MAV_CMD_DO_SET_PARAMETER":                   MAV_CMD_DO_SET_PARAMETER,
+	"MAV_CMD_DO_SET_RELAY":                       MAV_CMD_DO_SET_RELAY,
+	"MAV_CMD_DO_REPEAT_RELAY":                    MAV_CMD_DO_REPEAT_RELAY,
+	"MAV_CMD_DO_SET_SERVO":                       MAV_CMD_DO_SET_SERVO,
+	"MAV_CMD_DO_REPEAT_SERVO":                    MAV_CMD_DO_REPEAT_SERVO,
+	"MAV_CMD_DO_FLIGHTTERMINATION":               MAV_CMD_DO_FLIGHTTERMINATION,
+	"MAV_CMD_DO_CHANGE_ALTITUDE":                 MAV_CMD_DO_CHANGE_ALTITUDE,
+	"MAV_CMD_DO_SET_ACTUATOR":                    MAV_CMD_DO_SET_ACTUATOR,
+	"MAV_CMD_DO_LAND_START":                      MAV_CMD_DO_LAND_START,
+	"MAV_CMD_DO_RALLY_LAND":                      MAV_CMD_DO_RALLY_LAND,
+	"MAV_CMD_DO_GO_AROUND":                       MAV_CMD_DO_GO_AROUND,
+	"MAV_CMD_DO_REPOSITION":                      MAV_CMD_DO_REPOSITION,
+	"MAV_CMD_DO_PAUSE_CONTINUE":                  MAV_CMD_DO_PAUSE_CONTINUE,
+	"MAV_CMD_DO_SET_REVERSE":                     MAV_CMD_DO_SET_REVERSE,
+	"MAV_CMD_DO_SET_ROI_LOCATION":                MAV_CMD_DO_SET_ROI_LOCATION,
+	"MAV_CMD_DO_SET_ROI_WPNEXT_OFFSET":           MAV_CMD_DO_SET_ROI_WPNEXT_OFFSET,
+	"MAV_CMD_DO_SET_ROI_NONE":                    MAV_CMD_DO_SET_ROI_NONE,
+	"MAV_CMD_DO_SET_ROI_SYSID":                   MAV_CMD_DO_SET_ROI_SYSID,
+	"MAV_CMD_DO_CONTROL_VIDEO":                   MAV_CMD_DO_CONTROL_VIDEO,
+	"MAV_CMD_DO_SET_ROI":                         MAV_CMD_DO_SET_ROI,
+	"MAV_CMD_DO_DIGICAM_CONFIGURE":               MAV_CMD_DO_DIGICAM_CONFIGURE,
+	"MAV_CMD_DO_DIGICAM_CONTROL":                 MAV_CMD_DO_DIGICAM_CONTROL,
+	"MAV_CMD_DO_MOUNT_CONFIGURE":                 MAV_CMD_DO_MOUNT_CONFIGURE,
+	"MAV_CMD_DO_MOUNT_CONTROL":                   MAV_CMD_DO_MOUNT_CONTROL,
+	"MAV_CMD_DO_SET_CAM_TRIGG_DIST":              MAV_CMD_DO_SET_CAM_TRIGG_DIST,
+	"MAV_CMD_DO_FENCE_ENABLE":                    MAV_CMD_DO_FENCE_ENABLE,
+	"MAV_CMD_DO_PARACHUTE":                       MAV_CMD_DO_PARACHUTE,
+	"MAV_CMD_DO_MOTOR_TEST":                      MAV_CMD_DO_MOTOR_TEST,
+	"MAV_CMD_DO_INVERTED_FLIGHT":                 MAV_CMD_DO_INVERTED_FLIGHT,
+	"MAV_CMD_DO_GRIPPER":                         MAV_CMD_DO_GRIPPER,
+	"MAV_CMD_DO_AUTOTUNE_ENABLE":                 MAV_CMD_DO_AUTOTUNE_ENABLE,
+	"MAV_CMD_NAV_SET_YAW_SPEED":                  MAV_CMD_NAV_SET_YAW_SPEED,
+	"MAV_CMD_DO_SET_CAM_TRIGG_INTERVAL":          MAV_CMD_DO_SET_CAM_TRIGG_INTERVAL,
+	"MAV_CMD_DO_MOUNT_CONTROL_QUAT":              MAV_CMD_DO_MOUNT_CONTROL_QUAT,
+	"MAV_CMD_DO_GUIDED_MASTER":                   MAV_CMD_DO_GUIDED_MASTER,
+	"MAV_CMD_DO_GUIDED_LIMITS":                   MAV_CMD_DO_GUIDED_LIMITS,
+	"MAV_CMD_DO_ENGINE_CONTROL":                  MAV_CMD_DO_ENGINE_CONTROL,
+	"MAV_CMD_DO_SET_MISSION_CURRENT":             MAV_CMD_DO_SET_MISSION_CURRENT,
+	"MAV_CMD_DO_LAST":                            MAV_CMD_DO_LAST,
+	"MAV_CMD_PREFLIGHT_CALIBRATION":              MAV_CMD_PREFLIGHT_CALIBRATION,
+	"MAV_CMD_PREFLIGHT_SET_SENSOR_OFFSETS":       MAV_CMD_PREFLIGHT_SET_SENSOR_OFFSETS,
+	"MAV_CMD_PREFLIGHT_UAVCAN":                   MAV_CMD_PREFLIGHT_UAVCAN,
+	"MAV_CMD_PREFLIGHT_STORAGE":                  MAV_CMD_PREFLIGHT_STORAGE,
+	"MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN":          MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
+	"MAV_CMD_OVERRIDE_GOTO":                      MAV_CMD_OVERRIDE_GOTO,
+	"MAV_CMD_OBLIQUE_SURVEY":                     MAV_CMD_OBLIQUE_SURVEY,
+	"MAV_CMD_MISSION_START":                      MAV_CMD_MISSION_START,
+	"MAV_CMD_ACTUATOR_TEST":                      MAV_CMD_ACTUATOR_TEST,
+	"MAV_CMD_CONFIGURE_ACTUATOR":                 MAV_CMD_CONFIGURE_ACTUATOR,
+	"MAV_CMD_COMPONENT_ARM_DISARM":               MAV_CMD_COMPONENT_ARM_DISARM,
+	"MAV_CMD_RUN_PREARM_CHECKS":                  MAV_CMD_RUN_PREARM_CHECKS,
+	"MAV_CMD_ILLUMINATOR_ON_OFF":                 MAV_CMD_ILLUMINATOR_ON_OFF,
+	"MAV_CMD_GET_HOME_POSITION":                  MAV_CMD_GET_HOME_POSITION,
+	"MAV_CMD_INJECT_FAILURE":                     MAV_CMD_INJECT_FAILURE,
+	"MAV_CMD_START_RX_PAIR":                      MAV_CMD_START_RX_PAIR,
+	"MAV_CMD_GET_MESSAGE_INTERVAL":               MAV_CMD_GET_MESSAGE_INTERVAL,
+	"MAV_CMD_SET_MESSAGE_INTERVAL":               MAV_CMD_SET_MESSAGE_INTERVAL,
+	"MAV_CMD_REQUEST_MESSAGE":                    MAV_CMD_REQUEST_MESSAGE,
+	"MAV_CMD_REQUEST_PROTOCOL_VERSION":           MAV_CMD_REQUEST_PROTOCOL_VERSION,
+	"MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES":     MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES,
+	"MAV_CMD_REQUEST_CAMERA_INFORMATION":         MAV_CMD_REQUEST_CAMERA_INFORMATION,
+	"MAV_CMD_REQUEST_CAMERA_SETTINGS":            MAV_CMD_REQUEST_CAMERA_SETTINGS,
+	"MAV_CMD_REQUEST_STORAGE_INFORMATION":        MAV_CMD_REQUEST_STORAGE_INFORMATION,
+	"MAV_CMD_STORAGE_FORMAT":                     MAV_CMD_STORAGE_FORMAT,
+	"MAV_CMD_REQUEST_CAMERA_CAPTURE_STATUS":      MAV_CMD_REQUEST_CAMERA_CAPTURE_STATUS,
+	"MAV_CMD_REQUEST_FLIGHT_INFORMATION":         MAV_CMD_REQUEST_FLIGHT_INFORMATION,
+	"MAV_CMD_RESET_CAMERA_SETTINGS":              MAV_CMD_RESET_CAMERA_SETTINGS,
+	"MAV_CMD_SET_CAMERA_MODE":                    MAV_CMD_SET_CAMERA_MODE,
+	"MAV_CMD_SET_CAMERA_ZOOM":                    MAV_CMD_SET_CAMERA_ZOOM,
+	"MAV_CMD_SET_CAMERA_FOCUS":                   MAV_CMD_SET_CAMERA_FOCUS,
+	"MAV_CMD_SET_STORAGE_USAGE":                  MAV_CMD_SET_STORAGE_USAGE,
+	"MAV_CMD_JUMP_TAG":                           MAV_CMD_JUMP_TAG,
+	"MAV_CMD_DO_JUMP_TAG":                        MAV_CMD_DO_JUMP_TAG,
+	"MAV_CMD_DO_GIMBAL_MANAGER_PITCHYAW":         MAV_CMD_DO_GIMBAL_MANAGER_PITCHYAW,
+	"MAV_CMD_DO_GIMBAL_MANAGER_CONFIGURE":        MAV_CMD_DO_GIMBAL_MANAGER_CONFIGURE,
+	"MAV_CMD_IMAGE_START_CAPTURE":                MAV_CMD_IMAGE_START_CAPTURE,
+	"MAV_CMD_IMAGE_STOP_CAPTURE":                 MAV_CMD_IMAGE_STOP_CAPTURE,
+	"MAV_CMD_REQUEST_CAMERA_IMAGE_CAPTURE":       MAV_CMD_REQUEST_CAMERA_IMAGE_CAPTURE,
+	"MAV_CMD_DO_TRIGGER_CONTROL":                 MAV_CMD_DO_TRIGGER_CONTROL,
+	"MAV_CMD_CAMERA_TRACK_POINT":                 MAV_CMD_CAMERA_TRACK_POINT,
+	"MAV_CMD_CAMERA_TRACK_RECTANGLE":             MAV_CMD_CAMERA_TRACK_RECTANGLE,
+	"MAV_CMD_CAMERA_STOP_TRACKING":               MAV_CMD_CAMERA_STOP_TRACKING,
+	"MAV_CMD_VIDEO_START_CAPTURE":                MAV_CMD_VIDEO_START_CAPTURE,
+	"MAV_CMD_VIDEO_STOP_CAPTURE":                 MAV_CMD_VIDEO_STOP_CAPTURE,
+	"MAV_CMD_VIDEO_START_STREAMING":              MAV_CMD_VIDEO_START_STREAMING,
+	"MAV_CMD_VIDEO_STOP_STREAMING":               MAV_CMD_VIDEO_STOP_STREAMING,
+	"MAV_CMD_REQUEST_VIDEO_STREAM_INFORMATION":   MAV_CMD_REQUEST_VIDEO_STREAM_INFORMATION,
+	"MAV_CMD_REQUEST_VIDEO_STREAM_STATUS":        MAV_CMD_REQUEST_VIDEO_STREAM_STATUS,
+	"MAV_CMD_LOGGING_START":                      MAV_CMD_LOGGING_START,
+	"MAV_CMD_LOGGING_STOP":                       MAV_CMD_LOGGING_STOP,
+	"MAV_CMD_AIRFRAME_CONFIGURATION":             MAV_CMD_AIRFRAME_CONFIGURATION,
+	"MAV_CMD_CONTROL_HIGH_LATENCY":               MAV_CMD_CONTROL_HIGH_LATENCY,
+	"MAV_CMD_PANORAMA_CREATE":                    MAV_CMD_PANORAMA_CREATE,
+	"MAV_CMD_DO_VTOL_TRANSITION":                 MAV_CMD_DO_VTOL_TRANSITION,
+	"MAV_CMD_ARM_AUTHORIZATION_REQUEST":          MAV_CMD_ARM_AUTHORIZATION_REQUEST,
+	"MAV_CMD_SET_GUIDED_SUBMODE_STANDARD":        MAV_CMD_SET_GUIDED_SUBMODE_STANDARD,
+	"MAV_CMD_SET_GUIDED_SUBMODE_CIRCLE":          MAV_CMD_SET_GUIDED_SUBMODE_CIRCLE,
+	"MAV_CMD_CONDITION_GATE":                     MAV_CMD_CONDITION_GATE,
+	"MAV_CMD_NAV_FENCE_RETURN_POINT":             MAV_CMD_NAV_FENCE_RETURN_POINT,
+	"MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION": MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+	"MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION": MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION,
+	"MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION":         MAV_CMD_NAV_FENCE_CIRCLE_INCLUSION,
+	"MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION":         MAV_CMD_NAV_FENCE_CIRCLE_EXCLUSION,
+	"MAV_CMD_NAV_RALLY_POINT":                    MAV_CMD_NAV_RALLY_POINT,
+	"MAV_CMD_UAVCAN_GET_NODE_INFO":               MAV_CMD_UAVCAN_GET_NODE_INFO,
+	"MAV_CMD_DO_SET_SAFETY_SWITCH_STATE":         MAV_CMD_DO_SET_SAFETY_SWITCH_STATE,
+	"MAV_CMD_DO_ADSB_OUT_IDENT":                  MAV_CMD_DO_ADSB_OUT_IDENT,
+	"MAV_CMD_PAYLOAD_PREPARE_DEPLOY":             MAV_CMD_PAYLOAD_PREPARE_DEPLOY,
+	"MAV_CMD_PAYLOAD_CONTROL_DEPLOY":             MAV_CMD_PAYLOAD_CONTROL_DEPLOY,
+	"MAV_CMD_FIXED_MAG_CAL_YAW":                  MAV_CMD_FIXED_MAG_CAL_YAW,
+	"MAV_CMD_DO_WINCH":                           MAV_CMD_DO_WINCH,
+	"MAV_CMD_EXTERNAL_POSITION_ESTIMATE":         MAV_CMD_EXTERNAL_POSITION_ESTIMATE,
+	"MAV_CMD_WAYPOINT_USER_1":                    MAV_CMD_WAYPOINT_USER_1,
+	"MAV_CMD_WAYPOINT_USER_2":                    MAV_CMD_WAYPOINT_USER_2,
+	"MAV_CMD_WAYPOINT_USER_3":                    MAV_CMD_WAYPOINT_USER_3,
+	"MAV_CMD_WAYPOINT_USER_4":                    MAV_CMD_WAYPOINT_USER_4,
+	"MAV_CMD_WAYPOINT_USER_5":                    MAV_CMD_WAYPOINT_USER_5,
+	"MAV_CMD_SPATIAL_USER_1":                     MAV_CMD_SPATIAL_USER_1,
+	"MAV_CMD_SPATIAL_USER_2":                     MAV_CMD_SPATIAL_USER_2,
+	"MAV_CMD_SPATIAL_USER_3":                     MAV_CMD_SPATIAL_USER_3,
+	"MAV_CMD_SPATIAL_USER_4":                     MAV_CMD_SPATIAL_USER_4,
+	"MAV_CMD_SPATIAL_USER_5":                     MAV_CMD_SPATIAL_USER_5,
+	"MAV_CMD_USER_1":                             MAV_CMD_USER_1,
+	"MAV_CMD_USER_2":                             MAV_CMD_USER_2,
+	"MAV_CMD_USER_3":                             MAV_CMD_USER_3,
+	"MAV_CMD_USER_4":                             MAV_CMD_USER_4,
+	"MAV_CMD_USER_5":                             MAV_CMD_USER_5,
+	"MAV_CMD_CAN_FORWARD":                        MAV_CMD_CAN_FORWARD,
+	"MAV_CMD_PRS_SET_ARM":                        MAV_CMD_PRS_SET_ARM,
+	"MAV_CMD_PRS_GET_ARM":                        MAV_CMD_PRS_GET_ARM,
+	"MAV_CMD_PRS_GET_BATTERY":                    MAV_CMD_PRS_GET_BATTERY,
+	"MAV_CMD_PRS_GET_ERR":                        MAV_CMD_PRS_GET_ERR,
+	"MAV_CMD_PRS_SET_ARM_ALTI":                   MAV_CMD_PRS_SET_ARM_ALTI,
+	"MAV_CMD_PRS_GET_ARM_ALTI":                   MAV_CMD_PRS_GET_ARM_ALTI,
+	"MAV_CMD_PRS_SHUTDOWN":                       MAV_CMD_PRS_SHUTDOWN,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_CMD) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_CMD {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_CMD[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_CMD) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_CMD
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_CMD {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_CMD[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_CMD(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

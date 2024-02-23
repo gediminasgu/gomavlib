@@ -4,6 +4,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -28,12 +29,23 @@ var labels_CAMERA_TRACKING_TARGET_DATA = map[CAMERA_TRACKING_TARGET_DATA]string{
 	CAMERA_TRACKING_TARGET_DATA_IN_STATUS: "CAMERA_TRACKING_TARGET_DATA_IN_STATUS",
 }
 
+var values_CAMERA_TRACKING_TARGET_DATA = map[string]CAMERA_TRACKING_TARGET_DATA{
+	"CAMERA_TRACKING_TARGET_DATA_NONE":      CAMERA_TRACKING_TARGET_DATA_NONE,
+	"CAMERA_TRACKING_TARGET_DATA_EMBEDDED":  CAMERA_TRACKING_TARGET_DATA_EMBEDDED,
+	"CAMERA_TRACKING_TARGET_DATA_RENDERED":  CAMERA_TRACKING_TARGET_DATA_RENDERED,
+	"CAMERA_TRACKING_TARGET_DATA_IN_STATUS": CAMERA_TRACKING_TARGET_DATA_IN_STATUS,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e CAMERA_TRACKING_TARGET_DATA) MarshalText() ([]byte, error) {
+	if e == 0 {
+		return []byte("0"), nil
+	}
 	var names []string
-	for mask, label := range labels_CAMERA_TRACKING_TARGET_DATA {
+	for i := 0; i < 4; i++ {
+		mask := CAMERA_TRACKING_TARGET_DATA(1 << i)
 		if e&mask == mask {
-			names = append(names, label)
+			names = append(names, labels_CAMERA_TRACKING_TARGET_DATA[mask])
 		}
 	}
 	return []byte(strings.Join(names, " | ")), nil
@@ -44,15 +56,11 @@ func (e *CAMERA_TRACKING_TARGET_DATA) UnmarshalText(text []byte) error {
 	labels := strings.Split(string(text), " | ")
 	var mask CAMERA_TRACKING_TARGET_DATA
 	for _, label := range labels {
-		found := false
-		for value, l := range labels_CAMERA_TRACKING_TARGET_DATA {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
+		if value, ok := values_CAMERA_TRACKING_TARGET_DATA[label]; ok {
+			mask |= value
+		} else if value, err := strconv.Atoi(label); err == nil {
+			mask |= CAMERA_TRACKING_TARGET_DATA(value)
+		} else {
 			return fmt.Errorf("invalid label '%s'", label)
 		}
 	}

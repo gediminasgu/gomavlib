@@ -4,6 +4,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -52,12 +53,31 @@ var labels_ESTIMATOR_STATUS_FLAGS = map[ESTIMATOR_STATUS_FLAGS]string{
 	ESTIMATOR_ACCEL_ERROR:        "ESTIMATOR_ACCEL_ERROR",
 }
 
+var values_ESTIMATOR_STATUS_FLAGS = map[string]ESTIMATOR_STATUS_FLAGS{
+	"ESTIMATOR_ATTITUDE":           ESTIMATOR_ATTITUDE,
+	"ESTIMATOR_VELOCITY_HORIZ":     ESTIMATOR_VELOCITY_HORIZ,
+	"ESTIMATOR_VELOCITY_VERT":      ESTIMATOR_VELOCITY_VERT,
+	"ESTIMATOR_POS_HORIZ_REL":      ESTIMATOR_POS_HORIZ_REL,
+	"ESTIMATOR_POS_HORIZ_ABS":      ESTIMATOR_POS_HORIZ_ABS,
+	"ESTIMATOR_POS_VERT_ABS":       ESTIMATOR_POS_VERT_ABS,
+	"ESTIMATOR_POS_VERT_AGL":       ESTIMATOR_POS_VERT_AGL,
+	"ESTIMATOR_CONST_POS_MODE":     ESTIMATOR_CONST_POS_MODE,
+	"ESTIMATOR_PRED_POS_HORIZ_REL": ESTIMATOR_PRED_POS_HORIZ_REL,
+	"ESTIMATOR_PRED_POS_HORIZ_ABS": ESTIMATOR_PRED_POS_HORIZ_ABS,
+	"ESTIMATOR_GPS_GLITCH":         ESTIMATOR_GPS_GLITCH,
+	"ESTIMATOR_ACCEL_ERROR":        ESTIMATOR_ACCEL_ERROR,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e ESTIMATOR_STATUS_FLAGS) MarshalText() ([]byte, error) {
+	if e == 0 {
+		return []byte("0"), nil
+	}
 	var names []string
-	for mask, label := range labels_ESTIMATOR_STATUS_FLAGS {
+	for i := 0; i < 12; i++ {
+		mask := ESTIMATOR_STATUS_FLAGS(1 << i)
 		if e&mask == mask {
-			names = append(names, label)
+			names = append(names, labels_ESTIMATOR_STATUS_FLAGS[mask])
 		}
 	}
 	return []byte(strings.Join(names, " | ")), nil
@@ -68,15 +88,11 @@ func (e *ESTIMATOR_STATUS_FLAGS) UnmarshalText(text []byte) error {
 	labels := strings.Split(string(text), " | ")
 	var mask ESTIMATOR_STATUS_FLAGS
 	for _, label := range labels {
-		found := false
-		for value, l := range labels_ESTIMATOR_STATUS_FLAGS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
+		if value, ok := values_ESTIMATOR_STATUS_FLAGS[label]; ok {
+			mask |= value
+		} else if value, err := strconv.Atoi(label); err == nil {
+			mask |= ESTIMATOR_STATUS_FLAGS(value)
+		} else {
 			return fmt.Errorf("invalid label '%s'", label)
 		}
 	}

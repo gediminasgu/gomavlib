@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type MAV_MODE_GIMBAL uint32
@@ -36,35 +36,33 @@ var labels_MAV_MODE_GIMBAL = map[MAV_MODE_GIMBAL]string{
 	MAV_MODE_GIMBAL_RATE_CMD_TIMEOUT:  "MAV_MODE_GIMBAL_RATE_CMD_TIMEOUT",
 }
 
+var values_MAV_MODE_GIMBAL = map[string]MAV_MODE_GIMBAL{
+	"MAV_MODE_GIMBAL_UNINITIALIZED":     MAV_MODE_GIMBAL_UNINITIALIZED,
+	"MAV_MODE_GIMBAL_CALIBRATING_PITCH": MAV_MODE_GIMBAL_CALIBRATING_PITCH,
+	"MAV_MODE_GIMBAL_CALIBRATING_ROLL":  MAV_MODE_GIMBAL_CALIBRATING_ROLL,
+	"MAV_MODE_GIMBAL_CALIBRATING_YAW":   MAV_MODE_GIMBAL_CALIBRATING_YAW,
+	"MAV_MODE_GIMBAL_INITIALIZED":       MAV_MODE_GIMBAL_INITIALIZED,
+	"MAV_MODE_GIMBAL_ACTIVE":            MAV_MODE_GIMBAL_ACTIVE,
+	"MAV_MODE_GIMBAL_RATE_CMD_TIMEOUT":  MAV_MODE_GIMBAL_RATE_CMD_TIMEOUT,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_MODE_GIMBAL) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_MODE_GIMBAL {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_MODE_GIMBAL[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_MODE_GIMBAL) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_MODE_GIMBAL
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_MODE_GIMBAL {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_MODE_GIMBAL[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_MODE_GIMBAL(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

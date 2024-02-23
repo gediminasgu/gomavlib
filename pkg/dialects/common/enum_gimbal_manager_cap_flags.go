@@ -4,6 +4,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -64,12 +65,35 @@ var labels_GIMBAL_MANAGER_CAP_FLAGS = map[GIMBAL_MANAGER_CAP_FLAGS]string{
 	GIMBAL_MANAGER_CAP_FLAGS_CAN_POINT_LOCATION_GLOBAL:   "GIMBAL_MANAGER_CAP_FLAGS_CAN_POINT_LOCATION_GLOBAL",
 }
 
+var values_GIMBAL_MANAGER_CAP_FLAGS = map[string]GIMBAL_MANAGER_CAP_FLAGS{
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_RETRACT":                 GIMBAL_MANAGER_CAP_FLAGS_HAS_RETRACT,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_NEUTRAL":                 GIMBAL_MANAGER_CAP_FLAGS_HAS_NEUTRAL,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_ROLL_AXIS":               GIMBAL_MANAGER_CAP_FLAGS_HAS_ROLL_AXIS,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_ROLL_FOLLOW":             GIMBAL_MANAGER_CAP_FLAGS_HAS_ROLL_FOLLOW,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_ROLL_LOCK":               GIMBAL_MANAGER_CAP_FLAGS_HAS_ROLL_LOCK,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_PITCH_AXIS":              GIMBAL_MANAGER_CAP_FLAGS_HAS_PITCH_AXIS,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_PITCH_FOLLOW":            GIMBAL_MANAGER_CAP_FLAGS_HAS_PITCH_FOLLOW,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_PITCH_LOCK":              GIMBAL_MANAGER_CAP_FLAGS_HAS_PITCH_LOCK,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_YAW_AXIS":                GIMBAL_MANAGER_CAP_FLAGS_HAS_YAW_AXIS,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_YAW_FOLLOW":              GIMBAL_MANAGER_CAP_FLAGS_HAS_YAW_FOLLOW,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_YAW_LOCK":                GIMBAL_MANAGER_CAP_FLAGS_HAS_YAW_LOCK,
+	"GIMBAL_MANAGER_CAP_FLAGS_SUPPORTS_INFINITE_YAW":       GIMBAL_MANAGER_CAP_FLAGS_SUPPORTS_INFINITE_YAW,
+	"GIMBAL_MANAGER_CAP_FLAGS_SUPPORTS_YAW_IN_EARTH_FRAME": GIMBAL_MANAGER_CAP_FLAGS_SUPPORTS_YAW_IN_EARTH_FRAME,
+	"GIMBAL_MANAGER_CAP_FLAGS_HAS_RC_INPUTS":               GIMBAL_MANAGER_CAP_FLAGS_HAS_RC_INPUTS,
+	"GIMBAL_MANAGER_CAP_FLAGS_CAN_POINT_LOCATION_LOCAL":    GIMBAL_MANAGER_CAP_FLAGS_CAN_POINT_LOCATION_LOCAL,
+	"GIMBAL_MANAGER_CAP_FLAGS_CAN_POINT_LOCATION_GLOBAL":   GIMBAL_MANAGER_CAP_FLAGS_CAN_POINT_LOCATION_GLOBAL,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GIMBAL_MANAGER_CAP_FLAGS) MarshalText() ([]byte, error) {
+	if e == 0 {
+		return []byte("0"), nil
+	}
 	var names []string
-	for mask, label := range labels_GIMBAL_MANAGER_CAP_FLAGS {
+	for i := 0; i < 16; i++ {
+		mask := GIMBAL_MANAGER_CAP_FLAGS(1 << i)
 		if e&mask == mask {
-			names = append(names, label)
+			names = append(names, labels_GIMBAL_MANAGER_CAP_FLAGS[mask])
 		}
 	}
 	return []byte(strings.Join(names, " | ")), nil
@@ -80,15 +104,11 @@ func (e *GIMBAL_MANAGER_CAP_FLAGS) UnmarshalText(text []byte) error {
 	labels := strings.Split(string(text), " | ")
 	var mask GIMBAL_MANAGER_CAP_FLAGS
 	for _, label := range labels {
-		found := false
-		for value, l := range labels_GIMBAL_MANAGER_CAP_FLAGS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
+		if value, ok := values_GIMBAL_MANAGER_CAP_FLAGS[label]; ok {
+			mask |= value
+		} else if value, err := strconv.Atoi(label); err == nil {
+			mask |= GIMBAL_MANAGER_CAP_FLAGS(value)
+		} else {
 			return fmt.Errorf("invalid label '%s'", label)
 		}
 	}

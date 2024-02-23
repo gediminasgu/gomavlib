@@ -4,7 +4,7 @@ package avssuas
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type AVSS_HORSEFLY_OPERATION_MODE uint32
@@ -30,35 +30,31 @@ var labels_AVSS_HORSEFLY_OPERATION_MODE = map[AVSS_HORSEFLY_OPERATION_MODE]strin
 	MODE_HORSEFLY_DROP:         "MODE_HORSEFLY_DROP",
 }
 
+var values_AVSS_HORSEFLY_OPERATION_MODE = map[string]AVSS_HORSEFLY_OPERATION_MODE{
+	"MODE_HORSEFLY_MANUAL_CTRL":  MODE_HORSEFLY_MANUAL_CTRL,
+	"MODE_HORSEFLY_AUTO_TAKEOFF": MODE_HORSEFLY_AUTO_TAKEOFF,
+	"MODE_HORSEFLY_AUTO_LANDING": MODE_HORSEFLY_AUTO_LANDING,
+	"MODE_HORSEFLY_NAVI_GO_HOME": MODE_HORSEFLY_NAVI_GO_HOME,
+	"MODE_HORSEFLY_DROP":         MODE_HORSEFLY_DROP,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e AVSS_HORSEFLY_OPERATION_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_AVSS_HORSEFLY_OPERATION_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_AVSS_HORSEFLY_OPERATION_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *AVSS_HORSEFLY_OPERATION_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask AVSS_HORSEFLY_OPERATION_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_AVSS_HORSEFLY_OPERATION_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_AVSS_HORSEFLY_OPERATION_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = AVSS_HORSEFLY_OPERATION_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

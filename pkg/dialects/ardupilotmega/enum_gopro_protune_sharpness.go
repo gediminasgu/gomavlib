@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type GOPRO_PROTUNE_SHARPNESS uint32
@@ -24,35 +24,29 @@ var labels_GOPRO_PROTUNE_SHARPNESS = map[GOPRO_PROTUNE_SHARPNESS]string{
 	GOPRO_PROTUNE_SHARPNESS_HIGH:   "GOPRO_PROTUNE_SHARPNESS_HIGH",
 }
 
+var values_GOPRO_PROTUNE_SHARPNESS = map[string]GOPRO_PROTUNE_SHARPNESS{
+	"GOPRO_PROTUNE_SHARPNESS_LOW":    GOPRO_PROTUNE_SHARPNESS_LOW,
+	"GOPRO_PROTUNE_SHARPNESS_MEDIUM": GOPRO_PROTUNE_SHARPNESS_MEDIUM,
+	"GOPRO_PROTUNE_SHARPNESS_HIGH":   GOPRO_PROTUNE_SHARPNESS_HIGH,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GOPRO_PROTUNE_SHARPNESS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_GOPRO_PROTUNE_SHARPNESS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_GOPRO_PROTUNE_SHARPNESS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *GOPRO_PROTUNE_SHARPNESS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask GOPRO_PROTUNE_SHARPNESS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_GOPRO_PROTUNE_SHARPNESS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_GOPRO_PROTUNE_SHARPNESS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = GOPRO_PROTUNE_SHARPNESS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

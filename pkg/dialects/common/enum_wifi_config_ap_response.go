@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Possible responses from a WIFI_CONFIG_AP message.
@@ -34,35 +34,32 @@ var labels_WIFI_CONFIG_AP_RESPONSE = map[WIFI_CONFIG_AP_RESPONSE]string{
 	WIFI_CONFIG_AP_RESPONSE_PASSWORD_ERROR: "WIFI_CONFIG_AP_RESPONSE_PASSWORD_ERROR",
 }
 
+var values_WIFI_CONFIG_AP_RESPONSE = map[string]WIFI_CONFIG_AP_RESPONSE{
+	"WIFI_CONFIG_AP_RESPONSE_UNDEFINED":      WIFI_CONFIG_AP_RESPONSE_UNDEFINED,
+	"WIFI_CONFIG_AP_RESPONSE_ACCEPTED":       WIFI_CONFIG_AP_RESPONSE_ACCEPTED,
+	"WIFI_CONFIG_AP_RESPONSE_REJECTED":       WIFI_CONFIG_AP_RESPONSE_REJECTED,
+	"WIFI_CONFIG_AP_RESPONSE_MODE_ERROR":     WIFI_CONFIG_AP_RESPONSE_MODE_ERROR,
+	"WIFI_CONFIG_AP_RESPONSE_SSID_ERROR":     WIFI_CONFIG_AP_RESPONSE_SSID_ERROR,
+	"WIFI_CONFIG_AP_RESPONSE_PASSWORD_ERROR": WIFI_CONFIG_AP_RESPONSE_PASSWORD_ERROR,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e WIFI_CONFIG_AP_RESPONSE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_WIFI_CONFIG_AP_RESPONSE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_WIFI_CONFIG_AP_RESPONSE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *WIFI_CONFIG_AP_RESPONSE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask WIFI_CONFIG_AP_RESPONSE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_WIFI_CONFIG_AP_RESPONSE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_WIFI_CONFIG_AP_RESPONSE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = WIFI_CONFIG_AP_RESPONSE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

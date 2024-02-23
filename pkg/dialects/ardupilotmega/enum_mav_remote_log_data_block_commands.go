@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Special ACK block numbers control activation of dataflash log streaming.
@@ -22,35 +22,28 @@ var labels_MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS = map[MAV_REMOTE_LOG_DATA_BLOCK_CO
 	MAV_REMOTE_LOG_DATA_BLOCK_START: "MAV_REMOTE_LOG_DATA_BLOCK_START",
 }
 
+var values_MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS = map[string]MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS{
+	"MAV_REMOTE_LOG_DATA_BLOCK_STOP":  MAV_REMOTE_LOG_DATA_BLOCK_STOP,
+	"MAV_REMOTE_LOG_DATA_BLOCK_START": MAV_REMOTE_LOG_DATA_BLOCK_START,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_REMOTE_LOG_DATA_BLOCK_COMMANDS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

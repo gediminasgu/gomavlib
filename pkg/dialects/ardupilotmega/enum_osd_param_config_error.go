@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // The error type for the OSD parameter editor.
@@ -24,35 +24,30 @@ var labels_OSD_PARAM_CONFIG_ERROR = map[OSD_PARAM_CONFIG_ERROR]string{
 	OSD_PARAM_INVALID_PARAMETER:       "OSD_PARAM_INVALID_PARAMETER",
 }
 
+var values_OSD_PARAM_CONFIG_ERROR = map[string]OSD_PARAM_CONFIG_ERROR{
+	"OSD_PARAM_SUCCESS":                 OSD_PARAM_SUCCESS,
+	"OSD_PARAM_INVALID_SCREEN":          OSD_PARAM_INVALID_SCREEN,
+	"OSD_PARAM_INVALID_PARAMETER_INDEX": OSD_PARAM_INVALID_PARAMETER_INDEX,
+	"OSD_PARAM_INVALID_PARAMETER":       OSD_PARAM_INVALID_PARAMETER,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e OSD_PARAM_CONFIG_ERROR) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_OSD_PARAM_CONFIG_ERROR {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_OSD_PARAM_CONFIG_ERROR[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *OSD_PARAM_CONFIG_ERROR) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask OSD_PARAM_CONFIG_ERROR
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_OSD_PARAM_CONFIG_ERROR {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_OSD_PARAM_CONFIG_ERROR[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = OSD_PARAM_CONFIG_ERROR(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

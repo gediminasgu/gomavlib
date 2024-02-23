@@ -4,10 +4,11 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
-// Flags to report failure cases over the high latency telemtry.
+// Flags to report failure cases over the high latency telemetry.
 type HL_FAILURE_FLAG uint32
 
 const (
@@ -27,7 +28,7 @@ const (
 	HL_FAILURE_FLAG_TERRAIN HL_FAILURE_FLAG = 64
 	// Battery failure/critical low battery.
 	HL_FAILURE_FLAG_BATTERY HL_FAILURE_FLAG = 128
-	// RC receiver failure/no rc connection.
+	// RC receiver failure/no RC connection.
 	HL_FAILURE_FLAG_RC_RECEIVER HL_FAILURE_FLAG = 256
 	// Offboard link failure.
 	HL_FAILURE_FLAG_OFFBOARD_LINK HL_FAILURE_FLAG = 512
@@ -58,12 +59,33 @@ var labels_HL_FAILURE_FLAG = map[HL_FAILURE_FLAG]string{
 	HL_FAILURE_FLAG_MISSION:               "HL_FAILURE_FLAG_MISSION",
 }
 
+var values_HL_FAILURE_FLAG = map[string]HL_FAILURE_FLAG{
+	"HL_FAILURE_FLAG_GPS":                   HL_FAILURE_FLAG_GPS,
+	"HL_FAILURE_FLAG_DIFFERENTIAL_PRESSURE": HL_FAILURE_FLAG_DIFFERENTIAL_PRESSURE,
+	"HL_FAILURE_FLAG_ABSOLUTE_PRESSURE":     HL_FAILURE_FLAG_ABSOLUTE_PRESSURE,
+	"HL_FAILURE_FLAG_3D_ACCEL":              HL_FAILURE_FLAG_3D_ACCEL,
+	"HL_FAILURE_FLAG_3D_GYRO":               HL_FAILURE_FLAG_3D_GYRO,
+	"HL_FAILURE_FLAG_3D_MAG":                HL_FAILURE_FLAG_3D_MAG,
+	"HL_FAILURE_FLAG_TERRAIN":               HL_FAILURE_FLAG_TERRAIN,
+	"HL_FAILURE_FLAG_BATTERY":               HL_FAILURE_FLAG_BATTERY,
+	"HL_FAILURE_FLAG_RC_RECEIVER":           HL_FAILURE_FLAG_RC_RECEIVER,
+	"HL_FAILURE_FLAG_OFFBOARD_LINK":         HL_FAILURE_FLAG_OFFBOARD_LINK,
+	"HL_FAILURE_FLAG_ENGINE":                HL_FAILURE_FLAG_ENGINE,
+	"HL_FAILURE_FLAG_GEOFENCE":              HL_FAILURE_FLAG_GEOFENCE,
+	"HL_FAILURE_FLAG_ESTIMATOR":             HL_FAILURE_FLAG_ESTIMATOR,
+	"HL_FAILURE_FLAG_MISSION":               HL_FAILURE_FLAG_MISSION,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e HL_FAILURE_FLAG) MarshalText() ([]byte, error) {
+	if e == 0 {
+		return []byte("0"), nil
+	}
 	var names []string
-	for mask, label := range labels_HL_FAILURE_FLAG {
+	for i := 0; i < 14; i++ {
+		mask := HL_FAILURE_FLAG(1 << i)
 		if e&mask == mask {
-			names = append(names, label)
+			names = append(names, labels_HL_FAILURE_FLAG[mask])
 		}
 	}
 	return []byte(strings.Join(names, " | ")), nil
@@ -74,15 +96,11 @@ func (e *HL_FAILURE_FLAG) UnmarshalText(text []byte) error {
 	labels := strings.Split(string(text), " | ")
 	var mask HL_FAILURE_FLAG
 	for _, label := range labels {
-		found := false
-		for value, l := range labels_HL_FAILURE_FLAG {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
+		if value, ok := values_HL_FAILURE_FLAG[label]; ok {
+			mask |= value
+		} else if value, err := strconv.Atoi(label); err == nil {
+			mask |= HL_FAILURE_FLAG(value)
+		} else {
 			return fmt.Errorf("invalid label '%s'", label)
 		}
 	}

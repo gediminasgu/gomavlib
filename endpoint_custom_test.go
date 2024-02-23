@@ -1,7 +1,6 @@
 package gomavlib
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"testing"
@@ -10,44 +9,43 @@ import (
 
 	"github.com/bluenviron/gomavlib/v2/pkg/dialect"
 	"github.com/bluenviron/gomavlib/v2/pkg/frame"
-	"github.com/bluenviron/gomavlib/v2/pkg/message"
 )
 
 var _ endpointChannelSingle = (*endpointCustom)(nil)
 
-type dummyEndpoint struct {
+type dummyReadWriter struct {
 	chOut     chan []byte
 	chIn      chan []byte
 	chReadErr chan struct{}
 }
 
-func newDummyEndpoint() *dummyEndpoint {
-	return &dummyEndpoint{
+func newDummyReadWriterPair() (*dummyReadWriter, *dummyReadWriter) {
+	one := &dummyReadWriter{
 		chOut:     make(chan []byte),
 		chIn:      make(chan []byte),
 		chReadErr: make(chan struct{}),
 	}
+
+	two := &dummyReadWriter{
+		chOut:     one.chIn,
+		chIn:      one.chOut,
+		chReadErr: make(chan struct{}),
+	}
+
+	return one, two
 }
 
-func (e *dummyEndpoint) simulateReadError() {
+func (e *dummyReadWriter) simulateReadError() {
 	close(e.chReadErr)
 }
 
-func (e *dummyEndpoint) push(buf []byte) {
-	e.chOut <- buf
-}
-
-func (e *dummyEndpoint) pull() []byte {
-	return <-e.chIn
-}
-
-func (e *dummyEndpoint) Close() error {
+func (e *dummyReadWriter) Close() error {
 	close(e.chOut)
 	close(e.chIn)
 	return nil
 }
 
-func (e *dummyEndpoint) Read(p []byte) (int, error) {
+func (e *dummyReadWriter) Read(p []byte) (int, error) {
 	select {
 	case buf, ok := <-e.chOut:
 		if !ok {
@@ -59,24 +57,19 @@ func (e *dummyEndpoint) Read(p []byte) (int, error) {
 	}
 }
 
-func (e *dummyEndpoint) Write(p []byte) (int, error) {
+func (e *dummyReadWriter) Write(p []byte) (int, error) {
 	e.chIn <- p
 	return len(p), nil
 }
 
 func TestEndpointCustom(t *testing.T) {
-	dial := &dialect.Dialect{
-		Version:  3,
-		Messages: []message.Message{&MessageHeartbeat{}},
-	}
-
-	de := newDummyEndpoint()
+	remote, local := newDummyReadWriterPair()
 
 	node, err := NewNode(NodeConf{
-		Dialect:          dial,
+		Dialect:          testDialect,
 		OutVersion:       V2,
 		OutSystemID:      10,
-		Endpoints:        []EndpointConf{EndpointCustom{de}},
+		Endpoints:        []EndpointConf{EndpointCustom{remote}},
 		HeartbeatDisable: true,
 	})
 	require.NoError(t, err)
@@ -87,13 +80,11 @@ func TestEndpointCustom(t *testing.T) {
 		Channel: evt.(*EventChannelOpen).Channel,
 	}, evt)
 
-	dialectRW, err := dialect.NewReadWriter(dial)
+	dialectRW, err := dialect.NewReadWriter(testDialect)
 	require.NoError(t, err)
 
-	var buf bytes.Buffer
-
 	rw, err := frame.NewReadWriter(frame.ReadWriterConf{
-		ReadWriter:  &buf,
+		ReadWriter:  local,
 		DialectRW:   dialectRW,
 		OutVersion:  frame.V2,
 		OutSystemID: 11,
@@ -111,8 +102,6 @@ func TestEndpointCustom(t *testing.T) {
 		}
 		err = rw.WriteMessage(msg)
 		require.NoError(t, err)
-		de.push(buf.Bytes())
-		buf.Reset()
 
 		evt = <-node.Events()
 		require.Equal(t, &EventFrame{
@@ -134,10 +123,9 @@ func TestEndpointCustom(t *testing.T) {
 			SystemStatus:   2,
 			MavlinkVersion: 1,
 		}
-		node.WriteMessageAll(msg)
+		err := node.WriteMessageAll(msg)
+		require.NoError(t, err)
 
-		buf2 := de.pull()
-		buf.Write(buf2)
 		fr, err := rw.Read()
 		require.NoError(t, err)
 		require.Equal(t, &frame.V2Frame{

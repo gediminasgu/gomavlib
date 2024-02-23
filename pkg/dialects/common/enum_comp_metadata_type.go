@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Supported component metadata types. These are used in the "general" metadata file returned by COMPONENT_METADATA to provide information about supported metadata types. The types are not used directly in MAVLink messages.
@@ -34,35 +34,32 @@ var labels_COMP_METADATA_TYPE = map[COMP_METADATA_TYPE]string{
 	COMP_METADATA_TYPE_ACTUATORS:   "COMP_METADATA_TYPE_ACTUATORS",
 }
 
+var values_COMP_METADATA_TYPE = map[string]COMP_METADATA_TYPE{
+	"COMP_METADATA_TYPE_GENERAL":     COMP_METADATA_TYPE_GENERAL,
+	"COMP_METADATA_TYPE_PARAMETER":   COMP_METADATA_TYPE_PARAMETER,
+	"COMP_METADATA_TYPE_COMMANDS":    COMP_METADATA_TYPE_COMMANDS,
+	"COMP_METADATA_TYPE_PERIPHERALS": COMP_METADATA_TYPE_PERIPHERALS,
+	"COMP_METADATA_TYPE_EVENTS":      COMP_METADATA_TYPE_EVENTS,
+	"COMP_METADATA_TYPE_ACTUATORS":   COMP_METADATA_TYPE_ACTUATORS,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e COMP_METADATA_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_COMP_METADATA_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_COMP_METADATA_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *COMP_METADATA_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask COMP_METADATA_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_COMP_METADATA_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_COMP_METADATA_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = COMP_METADATA_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

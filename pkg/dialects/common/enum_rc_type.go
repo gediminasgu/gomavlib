@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // RC type
@@ -22,35 +22,28 @@ var labels_RC_TYPE = map[RC_TYPE]string{
 	RC_TYPE_SPEKTRUM_DSMX: "RC_TYPE_SPEKTRUM_DSMX",
 }
 
+var values_RC_TYPE = map[string]RC_TYPE{
+	"RC_TYPE_SPEKTRUM_DSM2": RC_TYPE_SPEKTRUM_DSM2,
+	"RC_TYPE_SPEKTRUM_DSMX": RC_TYPE_SPEKTRUM_DSMX,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e RC_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_RC_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_RC_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *RC_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask RC_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_RC_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_RC_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = RC_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

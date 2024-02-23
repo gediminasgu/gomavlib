@@ -4,7 +4,7 @@ package icarous
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type ICAROUS_TRACK_BAND_TYPES uint32
@@ -21,35 +21,29 @@ var labels_ICAROUS_TRACK_BAND_TYPES = map[ICAROUS_TRACK_BAND_TYPES]string{
 	ICAROUS_TRACK_BAND_TYPE_RECOVERY: "ICAROUS_TRACK_BAND_TYPE_RECOVERY",
 }
 
+var values_ICAROUS_TRACK_BAND_TYPES = map[string]ICAROUS_TRACK_BAND_TYPES{
+	"ICAROUS_TRACK_BAND_TYPE_NONE":     ICAROUS_TRACK_BAND_TYPE_NONE,
+	"ICAROUS_TRACK_BAND_TYPE_NEAR":     ICAROUS_TRACK_BAND_TYPE_NEAR,
+	"ICAROUS_TRACK_BAND_TYPE_RECOVERY": ICAROUS_TRACK_BAND_TYPE_RECOVERY,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e ICAROUS_TRACK_BAND_TYPES) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_ICAROUS_TRACK_BAND_TYPES {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_ICAROUS_TRACK_BAND_TYPES[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *ICAROUS_TRACK_BAND_TYPES) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask ICAROUS_TRACK_BAND_TYPES
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_ICAROUS_TRACK_BAND_TYPES {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_ICAROUS_TRACK_BAND_TYPES[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = ICAROUS_TRACK_BAND_TYPES(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

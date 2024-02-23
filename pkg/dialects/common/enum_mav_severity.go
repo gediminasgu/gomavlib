@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Indicates the severity level, generally used for status messages to indicate their relative urgency. Based on RFC-5424 using expanded definitions at: http://www.kiwisyslog.com/kb/info:-syslog-message-levels/.
@@ -40,35 +40,34 @@ var labels_MAV_SEVERITY = map[MAV_SEVERITY]string{
 	MAV_SEVERITY_DEBUG:     "MAV_SEVERITY_DEBUG",
 }
 
+var values_MAV_SEVERITY = map[string]MAV_SEVERITY{
+	"MAV_SEVERITY_EMERGENCY": MAV_SEVERITY_EMERGENCY,
+	"MAV_SEVERITY_ALERT":     MAV_SEVERITY_ALERT,
+	"MAV_SEVERITY_CRITICAL":  MAV_SEVERITY_CRITICAL,
+	"MAV_SEVERITY_ERROR":     MAV_SEVERITY_ERROR,
+	"MAV_SEVERITY_WARNING":   MAV_SEVERITY_WARNING,
+	"MAV_SEVERITY_NOTICE":    MAV_SEVERITY_NOTICE,
+	"MAV_SEVERITY_INFO":      MAV_SEVERITY_INFO,
+	"MAV_SEVERITY_DEBUG":     MAV_SEVERITY_DEBUG,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_SEVERITY) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_SEVERITY {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_SEVERITY[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_SEVERITY) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_SEVERITY
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_SEVERITY {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_SEVERITY[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_SEVERITY(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

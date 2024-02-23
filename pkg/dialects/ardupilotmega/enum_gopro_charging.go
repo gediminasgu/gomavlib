@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type GOPRO_CHARGING uint32
@@ -21,35 +21,28 @@ var labels_GOPRO_CHARGING = map[GOPRO_CHARGING]string{
 	GOPRO_CHARGING_ENABLED:  "GOPRO_CHARGING_ENABLED",
 }
 
+var values_GOPRO_CHARGING = map[string]GOPRO_CHARGING{
+	"GOPRO_CHARGING_DISABLED": GOPRO_CHARGING_DISABLED,
+	"GOPRO_CHARGING_ENABLED":  GOPRO_CHARGING_ENABLED,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GOPRO_CHARGING) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_GOPRO_CHARGING {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_GOPRO_CHARGING[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *GOPRO_CHARGING) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask GOPRO_CHARGING
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_GOPRO_CHARGING {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_GOPRO_CHARGING[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = GOPRO_CHARGING(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

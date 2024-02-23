@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Result of mission operation (in a MISSION_ACK message).
@@ -64,35 +64,42 @@ var labels_MAV_MISSION_RESULT = map[MAV_MISSION_RESULT]string{
 	MAV_MISSION_OPERATION_CANCELLED: "MAV_MISSION_OPERATION_CANCELLED",
 }
 
+var values_MAV_MISSION_RESULT = map[string]MAV_MISSION_RESULT{
+	"MAV_MISSION_ACCEPTED":            MAV_MISSION_ACCEPTED,
+	"MAV_MISSION_ERROR":               MAV_MISSION_ERROR,
+	"MAV_MISSION_UNSUPPORTED_FRAME":   MAV_MISSION_UNSUPPORTED_FRAME,
+	"MAV_MISSION_UNSUPPORTED":         MAV_MISSION_UNSUPPORTED,
+	"MAV_MISSION_NO_SPACE":            MAV_MISSION_NO_SPACE,
+	"MAV_MISSION_INVALID":             MAV_MISSION_INVALID,
+	"MAV_MISSION_INVALID_PARAM1":      MAV_MISSION_INVALID_PARAM1,
+	"MAV_MISSION_INVALID_PARAM2":      MAV_MISSION_INVALID_PARAM2,
+	"MAV_MISSION_INVALID_PARAM3":      MAV_MISSION_INVALID_PARAM3,
+	"MAV_MISSION_INVALID_PARAM4":      MAV_MISSION_INVALID_PARAM4,
+	"MAV_MISSION_INVALID_PARAM5_X":    MAV_MISSION_INVALID_PARAM5_X,
+	"MAV_MISSION_INVALID_PARAM6_Y":    MAV_MISSION_INVALID_PARAM6_Y,
+	"MAV_MISSION_INVALID_PARAM7":      MAV_MISSION_INVALID_PARAM7,
+	"MAV_MISSION_INVALID_SEQUENCE":    MAV_MISSION_INVALID_SEQUENCE,
+	"MAV_MISSION_DENIED":              MAV_MISSION_DENIED,
+	"MAV_MISSION_OPERATION_CANCELLED": MAV_MISSION_OPERATION_CANCELLED,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_MISSION_RESULT) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_MISSION_RESULT {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_MISSION_RESULT[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_MISSION_RESULT) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_MISSION_RESULT
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_MISSION_RESULT {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_MISSION_RESULT[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_MISSION_RESULT(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

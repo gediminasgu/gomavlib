@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type PID_TUNING_AXIS uint32
@@ -27,35 +27,32 @@ var labels_PID_TUNING_AXIS = map[PID_TUNING_AXIS]string{
 	PID_TUNING_LANDING: "PID_TUNING_LANDING",
 }
 
+var values_PID_TUNING_AXIS = map[string]PID_TUNING_AXIS{
+	"PID_TUNING_ROLL":    PID_TUNING_ROLL,
+	"PID_TUNING_PITCH":   PID_TUNING_PITCH,
+	"PID_TUNING_YAW":     PID_TUNING_YAW,
+	"PID_TUNING_ACCZ":    PID_TUNING_ACCZ,
+	"PID_TUNING_STEER":   PID_TUNING_STEER,
+	"PID_TUNING_LANDING": PID_TUNING_LANDING,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e PID_TUNING_AXIS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_PID_TUNING_AXIS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_PID_TUNING_AXIS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *PID_TUNING_AXIS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask PID_TUNING_AXIS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_PID_TUNING_AXIS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_PID_TUNING_AXIS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = PID_TUNING_AXIS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

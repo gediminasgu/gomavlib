@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type ACCELCAL_VEHICLE_POS uint32
@@ -31,35 +31,34 @@ var labels_ACCELCAL_VEHICLE_POS = map[ACCELCAL_VEHICLE_POS]string{
 	ACCELCAL_VEHICLE_POS_FAILED:   "ACCELCAL_VEHICLE_POS_FAILED",
 }
 
+var values_ACCELCAL_VEHICLE_POS = map[string]ACCELCAL_VEHICLE_POS{
+	"ACCELCAL_VEHICLE_POS_LEVEL":    ACCELCAL_VEHICLE_POS_LEVEL,
+	"ACCELCAL_VEHICLE_POS_LEFT":     ACCELCAL_VEHICLE_POS_LEFT,
+	"ACCELCAL_VEHICLE_POS_RIGHT":    ACCELCAL_VEHICLE_POS_RIGHT,
+	"ACCELCAL_VEHICLE_POS_NOSEDOWN": ACCELCAL_VEHICLE_POS_NOSEDOWN,
+	"ACCELCAL_VEHICLE_POS_NOSEUP":   ACCELCAL_VEHICLE_POS_NOSEUP,
+	"ACCELCAL_VEHICLE_POS_BACK":     ACCELCAL_VEHICLE_POS_BACK,
+	"ACCELCAL_VEHICLE_POS_SUCCESS":  ACCELCAL_VEHICLE_POS_SUCCESS,
+	"ACCELCAL_VEHICLE_POS_FAILED":   ACCELCAL_VEHICLE_POS_FAILED,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e ACCELCAL_VEHICLE_POS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_ACCELCAL_VEHICLE_POS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_ACCELCAL_VEHICLE_POS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *ACCELCAL_VEHICLE_POS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask ACCELCAL_VEHICLE_POS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_ACCELCAL_VEHICLE_POS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_ACCELCAL_VEHICLE_POS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = ACCELCAL_VEHICLE_POS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // ADSB classification for the type of vehicle emitting the transponder signal
@@ -56,35 +56,46 @@ var labels_ADSB_EMITTER_TYPE = map[ADSB_EMITTER_TYPE]string{
 	ADSB_EMITTER_TYPE_POINT_OBSTACLE:    "ADSB_EMITTER_TYPE_POINT_OBSTACLE",
 }
 
+var values_ADSB_EMITTER_TYPE = map[string]ADSB_EMITTER_TYPE{
+	"ADSB_EMITTER_TYPE_NO_INFO":           ADSB_EMITTER_TYPE_NO_INFO,
+	"ADSB_EMITTER_TYPE_LIGHT":             ADSB_EMITTER_TYPE_LIGHT,
+	"ADSB_EMITTER_TYPE_SMALL":             ADSB_EMITTER_TYPE_SMALL,
+	"ADSB_EMITTER_TYPE_LARGE":             ADSB_EMITTER_TYPE_LARGE,
+	"ADSB_EMITTER_TYPE_HIGH_VORTEX_LARGE": ADSB_EMITTER_TYPE_HIGH_VORTEX_LARGE,
+	"ADSB_EMITTER_TYPE_HEAVY":             ADSB_EMITTER_TYPE_HEAVY,
+	"ADSB_EMITTER_TYPE_HIGHLY_MANUV":      ADSB_EMITTER_TYPE_HIGHLY_MANUV,
+	"ADSB_EMITTER_TYPE_ROTOCRAFT":         ADSB_EMITTER_TYPE_ROTOCRAFT,
+	"ADSB_EMITTER_TYPE_UNASSIGNED":        ADSB_EMITTER_TYPE_UNASSIGNED,
+	"ADSB_EMITTER_TYPE_GLIDER":            ADSB_EMITTER_TYPE_GLIDER,
+	"ADSB_EMITTER_TYPE_LIGHTER_AIR":       ADSB_EMITTER_TYPE_LIGHTER_AIR,
+	"ADSB_EMITTER_TYPE_PARACHUTE":         ADSB_EMITTER_TYPE_PARACHUTE,
+	"ADSB_EMITTER_TYPE_ULTRA_LIGHT":       ADSB_EMITTER_TYPE_ULTRA_LIGHT,
+	"ADSB_EMITTER_TYPE_UNASSIGNED2":       ADSB_EMITTER_TYPE_UNASSIGNED2,
+	"ADSB_EMITTER_TYPE_UAV":               ADSB_EMITTER_TYPE_UAV,
+	"ADSB_EMITTER_TYPE_SPACE":             ADSB_EMITTER_TYPE_SPACE,
+	"ADSB_EMITTER_TYPE_UNASSGINED3":       ADSB_EMITTER_TYPE_UNASSGINED3,
+	"ADSB_EMITTER_TYPE_EMERGENCY_SURFACE": ADSB_EMITTER_TYPE_EMERGENCY_SURFACE,
+	"ADSB_EMITTER_TYPE_SERVICE_SURFACE":   ADSB_EMITTER_TYPE_SERVICE_SURFACE,
+	"ADSB_EMITTER_TYPE_POINT_OBSTACLE":    ADSB_EMITTER_TYPE_POINT_OBSTACLE,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e ADSB_EMITTER_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_ADSB_EMITTER_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_ADSB_EMITTER_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *ADSB_EMITTER_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask ADSB_EMITTER_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_ADSB_EMITTER_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_ADSB_EMITTER_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = ADSB_EMITTER_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

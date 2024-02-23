@@ -4,7 +4,7 @@ package minimal
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type MAV_STATE uint32
@@ -20,13 +20,13 @@ const (
 	MAV_STATE_STANDBY MAV_STATE = 3
 	// System is active and might be already airborne. Motors are engaged.
 	MAV_STATE_ACTIVE MAV_STATE = 4
-	// System is in a non-normal flight mode. It can however still navigate.
+	// System is in a non-normal flight mode (failsafe). It can however still navigate.
 	MAV_STATE_CRITICAL MAV_STATE = 5
-	// System is in a non-normal flight mode. It lost control over parts or over the whole airframe. It is in mayday and going down.
+	// System is in a non-normal flight mode (failsafe). It lost control over parts or over the whole airframe. It is in mayday and going down.
 	MAV_STATE_EMERGENCY MAV_STATE = 6
 	// System just initialized its power-down sequence, will shut down now.
 	MAV_STATE_POWEROFF MAV_STATE = 7
-	// System is terminating itself.
+	// System is terminating itself (failsafe or commanded).
 	MAV_STATE_FLIGHT_TERMINATION MAV_STATE = 8
 )
 
@@ -42,35 +42,35 @@ var labels_MAV_STATE = map[MAV_STATE]string{
 	MAV_STATE_FLIGHT_TERMINATION: "MAV_STATE_FLIGHT_TERMINATION",
 }
 
+var values_MAV_STATE = map[string]MAV_STATE{
+	"MAV_STATE_UNINIT":             MAV_STATE_UNINIT,
+	"MAV_STATE_BOOT":               MAV_STATE_BOOT,
+	"MAV_STATE_CALIBRATING":        MAV_STATE_CALIBRATING,
+	"MAV_STATE_STANDBY":            MAV_STATE_STANDBY,
+	"MAV_STATE_ACTIVE":             MAV_STATE_ACTIVE,
+	"MAV_STATE_CRITICAL":           MAV_STATE_CRITICAL,
+	"MAV_STATE_EMERGENCY":          MAV_STATE_EMERGENCY,
+	"MAV_STATE_POWEROFF":           MAV_STATE_POWEROFF,
+	"MAV_STATE_FLIGHT_TERMINATION": MAV_STATE_FLIGHT_TERMINATION,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_STATE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_STATE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_STATE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_STATE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_STATE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_STATE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_STATE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_STATE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

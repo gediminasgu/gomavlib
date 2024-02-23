@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type CAMERA_FEEDBACK_FLAGS uint32
@@ -30,35 +30,31 @@ var labels_CAMERA_FEEDBACK_FLAGS = map[CAMERA_FEEDBACK_FLAGS]string{
 	CAMERA_FEEDBACK_OPENLOOP:    "CAMERA_FEEDBACK_OPENLOOP",
 }
 
+var values_CAMERA_FEEDBACK_FLAGS = map[string]CAMERA_FEEDBACK_FLAGS{
+	"CAMERA_FEEDBACK_PHOTO":       CAMERA_FEEDBACK_PHOTO,
+	"CAMERA_FEEDBACK_VIDEO":       CAMERA_FEEDBACK_VIDEO,
+	"CAMERA_FEEDBACK_BADEXPOSURE": CAMERA_FEEDBACK_BADEXPOSURE,
+	"CAMERA_FEEDBACK_CLOSEDLOOP":  CAMERA_FEEDBACK_CLOSEDLOOP,
+	"CAMERA_FEEDBACK_OPENLOOP":    CAMERA_FEEDBACK_OPENLOOP,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e CAMERA_FEEDBACK_FLAGS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_CAMERA_FEEDBACK_FLAGS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_CAMERA_FEEDBACK_FLAGS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *CAMERA_FEEDBACK_FLAGS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask CAMERA_FEEDBACK_FLAGS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_CAMERA_FEEDBACK_FLAGS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_CAMERA_FEEDBACK_FLAGS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = CAMERA_FEEDBACK_FLAGS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

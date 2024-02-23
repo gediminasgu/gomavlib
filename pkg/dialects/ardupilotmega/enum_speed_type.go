@@ -3,56 +3,19 @@
 package ardupilotmega
 
 import (
-	"fmt"
-	"strings"
+	"github.com/bluenviron/gomavlib/v2/pkg/dialects/common"
 )
 
-type SPEED_TYPE uint32
+// Speed setpoint types used in MAV_CMD_DO_CHANGE_SPEED
+type SPEED_TYPE = common.SPEED_TYPE
 
 const (
-	SPEED_TYPE_AIRSPEED    SPEED_TYPE = 0
-	SPEED_TYPE_GROUNDSPEED SPEED_TYPE = 1
+	// Airspeed
+	SPEED_TYPE_AIRSPEED SPEED_TYPE = common.SPEED_TYPE_AIRSPEED
+	// Groundspeed
+	SPEED_TYPE_GROUNDSPEED SPEED_TYPE = common.SPEED_TYPE_GROUNDSPEED
+	// Climb speed
+	SPEED_TYPE_CLIMB_SPEED SPEED_TYPE = common.SPEED_TYPE_CLIMB_SPEED
+	// Descent speed
+	SPEED_TYPE_DESCENT_SPEED SPEED_TYPE = common.SPEED_TYPE_DESCENT_SPEED
 )
-
-var labels_SPEED_TYPE = map[SPEED_TYPE]string{
-	SPEED_TYPE_AIRSPEED:    "SPEED_TYPE_AIRSPEED",
-	SPEED_TYPE_GROUNDSPEED: "SPEED_TYPE_GROUNDSPEED",
-}
-
-// MarshalText implements the encoding.TextMarshaler interface.
-func (e SPEED_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_SPEED_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
-	}
-	return []byte(strings.Join(names, " | ")), nil
-}
-
-// UnmarshalText implements the encoding.TextUnmarshaler interface.
-func (e *SPEED_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask SPEED_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_SPEED_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
-	}
-	*e = mask
-	return nil
-}
-
-// String implements the fmt.Stringer interface.
-func (e SPEED_TYPE) String() string {
-	val, _ := e.MarshalText()
-	return string(val)
-}

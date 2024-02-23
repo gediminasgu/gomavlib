@@ -4,6 +4,7 @@ package uavionix
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -24,12 +25,23 @@ var labels_UAVIONIX_ADSB_RF_HEALTH = map[UAVIONIX_ADSB_RF_HEALTH]string{
 	UAVIONIX_ADSB_RF_HEALTH_FAIL_RX:      "UAVIONIX_ADSB_RF_HEALTH_FAIL_RX",
 }
 
+var values_UAVIONIX_ADSB_RF_HEALTH = map[string]UAVIONIX_ADSB_RF_HEALTH{
+	"UAVIONIX_ADSB_RF_HEALTH_INITIALIZING": UAVIONIX_ADSB_RF_HEALTH_INITIALIZING,
+	"UAVIONIX_ADSB_RF_HEALTH_OK":           UAVIONIX_ADSB_RF_HEALTH_OK,
+	"UAVIONIX_ADSB_RF_HEALTH_FAIL_TX":      UAVIONIX_ADSB_RF_HEALTH_FAIL_TX,
+	"UAVIONIX_ADSB_RF_HEALTH_FAIL_RX":      UAVIONIX_ADSB_RF_HEALTH_FAIL_RX,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e UAVIONIX_ADSB_RF_HEALTH) MarshalText() ([]byte, error) {
+	if e == 0 {
+		return []byte("0"), nil
+	}
 	var names []string
-	for mask, label := range labels_UAVIONIX_ADSB_RF_HEALTH {
+	for i := 0; i < 4; i++ {
+		mask := UAVIONIX_ADSB_RF_HEALTH(1 << i)
 		if e&mask == mask {
-			names = append(names, label)
+			names = append(names, labels_UAVIONIX_ADSB_RF_HEALTH[mask])
 		}
 	}
 	return []byte(strings.Join(names, " | ")), nil
@@ -40,15 +52,11 @@ func (e *UAVIONIX_ADSB_RF_HEALTH) UnmarshalText(text []byte) error {
 	labels := strings.Split(string(text), " | ")
 	var mask UAVIONIX_ADSB_RF_HEALTH
 	for _, label := range labels {
-		found := false
-		for value, l := range labels_UAVIONIX_ADSB_RF_HEALTH {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
+		if value, ok := values_UAVIONIX_ADSB_RF_HEALTH[label]; ok {
+			mask |= value
+		} else if value, err := strconv.Atoi(label); err == nil {
+			mask |= UAVIONIX_ADSB_RF_HEALTH(value)
+		} else {
 			return fmt.Errorf("invalid label '%s'", label)
 		}
 	}

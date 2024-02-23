@@ -33,12 +33,12 @@ Features:
 * [API Documentation](#api-documentation)
 * [Dialect generation](#dialect-generation)
 * [Testing](#testing)
-* [Standards](#standards)
+* [Specifications](#specifications)
 * [Links](#links)
 
 ## Installation
 
-1. Install Go &ge; 1.18.
+1. Install Go &ge; 1.19.
 
 2. Create an empty folder, open a terminal in it and initialize the Go modules system:
 
@@ -63,6 +63,7 @@ Features:
   * [events](examples/events/main.go)
   * [router](examples/router/main.go)
   * [router-edit](examples/router-edit/main.go)
+  * [serial-to-json](examples/serial-to-json/main.go)
   * [stream-requests](examples/stream-requests/main.go)
   * [readwriter](examples/readwriter/main.go)
 
@@ -74,7 +75,7 @@ Features:
 
 ## API Documentation
 
-https://pkg.go.dev/github.com/bluenviron/gomavlib/v2#pkg-index
+[Click to open the API Documentation](https://pkg.go.dev/github.com/bluenviron/gomavlib/v2#pkg-index)
 
 ## Dialect generation
 
@@ -93,14 +94,14 @@ If you want to hack the library and test the results, unit tests can be launched
 make test
 ```
 
-## Standards
+## Specifications
 
-* Mavlink
-  * [main website](https://mavlink.io/en/)
-  * [packet format](https://mavlink.io/en/guide/serialization.html)
-  * [common dialect](https://github.com/mavlink/mavlink/blob/master/message_definitions/v1.0/common.xml)
-
-* [Golang project layout](https://github.com/golang-standards/project-layout)
+|name|area|
+|----|----|
+|[main website](https://mavlink.io/en/)|protocol|
+|[packet format](https://mavlink.io/en/guide/serialization.html)|protocol|
+|[common dialect](https://github.com/mavlink/mavlink/blob/master/message_definitions/v1.0/common.xml)|dialects|
+|[Golang project layout](https://github.com/golang-standards/project-layout)|project layout|
 
 ## Links
 

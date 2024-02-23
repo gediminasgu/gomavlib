@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type GOPRO_RESOLUTION uint32
@@ -57,35 +57,40 @@ var labels_GOPRO_RESOLUTION = map[GOPRO_RESOLUTION]string{
 	GOPRO_RESOLUTION_4k_SUPERVIEW:    "GOPRO_RESOLUTION_4k_SUPERVIEW",
 }
 
+var values_GOPRO_RESOLUTION = map[string]GOPRO_RESOLUTION{
+	"GOPRO_RESOLUTION_480p":            GOPRO_RESOLUTION_480p,
+	"GOPRO_RESOLUTION_720p":            GOPRO_RESOLUTION_720p,
+	"GOPRO_RESOLUTION_960p":            GOPRO_RESOLUTION_960p,
+	"GOPRO_RESOLUTION_1080p":           GOPRO_RESOLUTION_1080p,
+	"GOPRO_RESOLUTION_1440p":           GOPRO_RESOLUTION_1440p,
+	"GOPRO_RESOLUTION_2_7k_17_9":       GOPRO_RESOLUTION_2_7k_17_9,
+	"GOPRO_RESOLUTION_2_7k_16_9":       GOPRO_RESOLUTION_2_7k_16_9,
+	"GOPRO_RESOLUTION_2_7k_4_3":        GOPRO_RESOLUTION_2_7k_4_3,
+	"GOPRO_RESOLUTION_4k_16_9":         GOPRO_RESOLUTION_4k_16_9,
+	"GOPRO_RESOLUTION_4k_17_9":         GOPRO_RESOLUTION_4k_17_9,
+	"GOPRO_RESOLUTION_720p_SUPERVIEW":  GOPRO_RESOLUTION_720p_SUPERVIEW,
+	"GOPRO_RESOLUTION_1080p_SUPERVIEW": GOPRO_RESOLUTION_1080p_SUPERVIEW,
+	"GOPRO_RESOLUTION_2_7k_SUPERVIEW":  GOPRO_RESOLUTION_2_7k_SUPERVIEW,
+	"GOPRO_RESOLUTION_4k_SUPERVIEW":    GOPRO_RESOLUTION_4k_SUPERVIEW,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GOPRO_RESOLUTION) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_GOPRO_RESOLUTION {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_GOPRO_RESOLUTION[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *GOPRO_RESOLUTION) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask GOPRO_RESOLUTION
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_GOPRO_RESOLUTION {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_GOPRO_RESOLUTION[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = GOPRO_RESOLUTION(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

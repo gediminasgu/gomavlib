@@ -4,7 +4,7 @@ package ardupilotmega
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Deepstall flight stage.
@@ -37,35 +37,33 @@ var labels_DEEPSTALL_STAGE = map[DEEPSTALL_STAGE]string{
 	DEEPSTALL_STAGE_LAND:              "DEEPSTALL_STAGE_LAND",
 }
 
+var values_DEEPSTALL_STAGE = map[string]DEEPSTALL_STAGE{
+	"DEEPSTALL_STAGE_FLY_TO_LANDING":    DEEPSTALL_STAGE_FLY_TO_LANDING,
+	"DEEPSTALL_STAGE_ESTIMATE_WIND":     DEEPSTALL_STAGE_ESTIMATE_WIND,
+	"DEEPSTALL_STAGE_WAIT_FOR_BREAKOUT": DEEPSTALL_STAGE_WAIT_FOR_BREAKOUT,
+	"DEEPSTALL_STAGE_FLY_TO_ARC":        DEEPSTALL_STAGE_FLY_TO_ARC,
+	"DEEPSTALL_STAGE_ARC":               DEEPSTALL_STAGE_ARC,
+	"DEEPSTALL_STAGE_APPROACH":          DEEPSTALL_STAGE_APPROACH,
+	"DEEPSTALL_STAGE_LAND":              DEEPSTALL_STAGE_LAND,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e DEEPSTALL_STAGE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_DEEPSTALL_STAGE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_DEEPSTALL_STAGE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *DEEPSTALL_STAGE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask DEEPSTALL_STAGE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_DEEPSTALL_STAGE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_DEEPSTALL_STAGE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = DEEPSTALL_STAGE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

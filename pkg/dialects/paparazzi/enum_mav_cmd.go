@@ -10,7 +10,7 @@ import (
 type MAV_CMD = common.MAV_CMD
 
 const (
-	// Navigate to waypoint.
+	// Navigate to waypoint. This is intended for use in missions (for guided commands outside of missions use MAV_CMD_DO_REPOSITION).
 	MAV_CMD_NAV_WAYPOINT MAV_CMD = common.MAV_CMD_NAV_WAYPOINT
 	// Loiter around this waypoint an unlimited amount of time
 	MAV_CMD_NAV_LOITER_UNLIM MAV_CMD = common.MAV_CMD_NAV_LOITER_UNLIM
@@ -72,7 +72,7 @@ const (
 	MAV_CMD_DO_SET_MODE MAV_CMD = common.MAV_CMD_DO_SET_MODE
 	// Jump to the desired command in the mission list.  Repeat this action only the specified number of times
 	MAV_CMD_DO_JUMP MAV_CMD = common.MAV_CMD_DO_JUMP
-	// Change speed and/or throttle set points. The value persists until it is overridden or there is a mode change.
+	// Change speed and/or throttle set points. The value persists until it is overridden or there is a mode change
 	MAV_CMD_DO_CHANGE_SPEED MAV_CMD = common.MAV_CMD_DO_CHANGE_SPEED
 	// Sets the home position to either to the current position or a specified position.
 	// The home position is the default position that the system will return to and land on.
@@ -90,7 +90,7 @@ const (
 	// Cycle a between its nominal setting and a desired PWM for a desired number of cycles with a desired period.
 	MAV_CMD_DO_REPEAT_SERVO MAV_CMD = common.MAV_CMD_DO_REPEAT_SERVO
 	// Terminate flight immediately.
-	// Flight termination immediately and irreversably terminates the current flight, returning the vehicle to ground.
+	// Flight termination immediately and irreversibly terminates the current flight, returning the vehicle to ground.
 	// The vehicle will ignore RC or other input until it has been power-cycled.
 	// Termination may trigger safety measures, including: disabling motors and deployment of parachute on multicopters, and setting flight surfaces to initiate a landing pattern on fixed-wing).
 	// On multicopters without a parachute it may trigger a crash landing.
@@ -109,7 +109,7 @@ const (
 	MAV_CMD_DO_RALLY_LAND MAV_CMD = common.MAV_CMD_DO_RALLY_LAND
 	// Mission command to safely abort an autonomous landing.
 	MAV_CMD_DO_GO_AROUND MAV_CMD = common.MAV_CMD_DO_GO_AROUND
-	// Reposition the vehicle to a specific WGS84 global position.
+	// Reposition the vehicle to a specific WGS84 global position. This command is intended for guided commands (for missions use MAV_CMD_NAV_WAYPOINT instead).
 	MAV_CMD_DO_REPOSITION MAV_CMD = common.MAV_CMD_DO_REPOSITION
 	// If in a GPS controlled position mode, hold the current position or continue.
 	MAV_CMD_DO_PAUSE_CONTINUE MAV_CMD = common.MAV_CMD_DO_PAUSE_CONTINUE
@@ -202,7 +202,7 @@ const (
 	// The results of the checks are usually then reported in SYS_STATUS messages (this is system-specific).
 	// The command should return MAV_RESULT_TEMPORARILY_REJECTED if the system is already armed.
 	MAV_CMD_RUN_PREARM_CHECKS MAV_CMD = common.MAV_CMD_RUN_PREARM_CHECKS
-	// Turns illuminators ON/OFF. An illuminator is a light source that is used for lighting up dark areas external to the sytstem: e.g. a torch or searchlight (as opposed to a light source for illuminating the system itself, e.g. an indicator light).
+	// Turns illuminators ON/OFF. An illuminator is a light source that is used for lighting up dark areas external to the system: e.g. a torch or searchlight (as opposed to a light source for illuminating the system itself, e.g. an indicator light).
 	MAV_CMD_ILLUMINATOR_ON_OFF MAV_CMD = common.MAV_CMD_ILLUMINATOR_ON_OFF
 	// Request the home position from the vehicle.
 	// The vehicle will ACK the command and then emit the HOME_POSITION message.
@@ -256,9 +256,27 @@ const (
 	MAV_CMD_DO_GIMBAL_MANAGER_PITCHYAW MAV_CMD = common.MAV_CMD_DO_GIMBAL_MANAGER_PITCHYAW
 	// Gimbal configuration to set which sysid/compid is in primary and secondary control.
 	MAV_CMD_DO_GIMBAL_MANAGER_CONFIGURE MAV_CMD = common.MAV_CMD_DO_GIMBAL_MANAGER_CONFIGURE
-	// Start image capture sequence. Sends CAMERA_IMAGE_CAPTURED after each capture. Use NaN for reserved values.
+	// Start image capture sequence. CAMERA_IMAGE_CAPTURED must be emitted after each capture.
+	// Param1 (id) may be used to specify the target camera: 0: all cameras, 1 to 6: autopilot-connected cameras, 7-255: MAVLink camera component ID.
+	// It is needed in order to target specific cameras connected to the autopilot, or specific sensors in a multi-sensor camera (neither of which have a distinct MAVLink component ID).
+	// It is also needed to specify the target camera in missions.
+	// When used in a mission, an autopilot should execute the MAV_CMD for a specified local camera (param1 = 1-6), or resend it as a command if it is intended for a MAVLink camera (param1 = 7 - 255), setting the command's target_component as the param1 value (and setting param1 in the command to zero).
+	// If the param1 is 0 the autopilot should do both.
+	// When sent in a command the target MAVLink address is set using target_component.
+	// If addressed specifically to an autopilot: param1 should be used in the same way as it is for missions (though command should NACK with MAV_RESULT_DENIED if a specified local camera does not exist).
+	// If addressed to a MAVLink camera, param 1 can be used to address all cameras (0), or to separately address 1 to 7 individual sensors. Other values should be NACKed with MAV_RESULT_DENIED.
+	// If the command is broadcast (target_component is 0) then param 1 should be set to 0 (any other value should be NACKED with MAV_RESULT_DENIED). An autopilot would trigger any local cameras and forward the command to all channels.
 	MAV_CMD_IMAGE_START_CAPTURE MAV_CMD = common.MAV_CMD_IMAGE_START_CAPTURE
-	// Stop image capture sequence Use NaN for reserved values.
+	// Stop image capture sequence.
+	// Param1 (id) may be used to specify the target camera: 0: all cameras, 1 to 6: autopilot-connected cameras, 7-255: MAVLink camera component ID.
+	// It is needed in order to target specific cameras connected to the autopilot, or specific sensors in a multi-sensor camera (neither of which have a distinct MAVLink component ID).
+	// It is also needed to specify the target camera in missions.
+	// When used in a mission, an autopilot should execute the MAV_CMD for a specified local camera (param1 = 1-6), or resend it as a command if it is intended for a MAVLink camera (param1 = 7 - 255), setting the command's target_component as the param1 value (and setting param1 in the command to zero).
+	// If the param1 is 0 the autopilot should do both.
+	// When sent in a command the target MAVLink address is set using target_component.
+	// If addressed specifically to an autopilot: param1 should be used in the same way as it is for missions (though command should NACK with MAV_RESULT_DENIED if a specified local camera does not exist).
+	// If addressed to a MAVLink camera, param1 can be used to address all cameras (0), or to separately address 1 to 7 individual sensors. Other values should be NACKed with MAV_RESULT_DENIED.
+	// If the command is broadcast (target_component is 0) then param 1 should be set to 0 (any other value should be NACKED with MAV_RESULT_DENIED). An autopilot would trigger any local cameras and forward the command to all channels.
 	MAV_CMD_IMAGE_STOP_CAPTURE MAV_CMD = common.MAV_CMD_IMAGE_STOP_CAPTURE
 	// Re-request a CAMERA_IMAGE_CAPTURED message.
 	MAV_CMD_REQUEST_CAMERA_IMAGE_CAPTURE MAV_CMD = common.MAV_CMD_REQUEST_CAMERA_IMAGE_CAPTURE
@@ -317,6 +335,8 @@ const (
 	MAV_CMD_NAV_RALLY_POINT MAV_CMD = common.MAV_CMD_NAV_RALLY_POINT
 	// Commands the vehicle to respond with a sequence of messages UAVCAN_NODE_INFO, one message per every UAVCAN node that is online. Note that some of the response messages can be lost, which the receiver can detect easily by checking whether every received UAVCAN_NODE_STATUS has a matching message UAVCAN_NODE_INFO received earlier; if not, this command should be sent again in order to request re-transmission of the node information messages.
 	MAV_CMD_UAVCAN_GET_NODE_INFO MAV_CMD = common.MAV_CMD_UAVCAN_GET_NODE_INFO
+	// Change state of safety switch.
+	MAV_CMD_DO_SET_SAFETY_SWITCH_STATE MAV_CMD = common.MAV_CMD_DO_SET_SAFETY_SWITCH_STATE
 	// Trigger the start of an ADSB-out IDENT. This should only be used when requested to do so by an Air Traffic Controller in controlled airspace. This starts the IDENT which is then typically held for 18 seconds by the hardware per the Mode A, C, and S transponder spec.
 	MAV_CMD_DO_ADSB_OUT_IDENT MAV_CMD = common.MAV_CMD_DO_ADSB_OUT_IDENT
 	// Deploy payload on a Lat / Lon / Alt position. This includes the navigation to reach the required release position and velocity.
@@ -327,6 +347,8 @@ const (
 	MAV_CMD_FIXED_MAG_CAL_YAW MAV_CMD = common.MAV_CMD_FIXED_MAG_CAL_YAW
 	// Command to operate winch.
 	MAV_CMD_DO_WINCH MAV_CMD = common.MAV_CMD_DO_WINCH
+	// Provide an external position estimate for use when dead-reckoning. This is meant to be used for occasional position resets that may be provided by a external system such as a remote pilot using landmarks over a video link.
+	MAV_CMD_EXTERNAL_POSITION_ESTIMATE MAV_CMD = common.MAV_CMD_EXTERNAL_POSITION_ESTIMATE
 	// User defined waypoint item. Ground Station will show the Vehicle as flying through this item.
 	MAV_CMD_WAYPOINT_USER_1 MAV_CMD = common.MAV_CMD_WAYPOINT_USER_1
 	// User defined waypoint item. Ground Station will show the Vehicle as flying through this item.

@@ -4,6 +4,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -28,12 +29,23 @@ var labels_AUTOTUNE_AXIS = map[AUTOTUNE_AXIS]string{
 	AUTOTUNE_AXIS_YAW:     "AUTOTUNE_AXIS_YAW",
 }
 
+var values_AUTOTUNE_AXIS = map[string]AUTOTUNE_AXIS{
+	"AUTOTUNE_AXIS_DEFAULT": AUTOTUNE_AXIS_DEFAULT,
+	"AUTOTUNE_AXIS_ROLL":    AUTOTUNE_AXIS_ROLL,
+	"AUTOTUNE_AXIS_PITCH":   AUTOTUNE_AXIS_PITCH,
+	"AUTOTUNE_AXIS_YAW":     AUTOTUNE_AXIS_YAW,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e AUTOTUNE_AXIS) MarshalText() ([]byte, error) {
+	if e == 0 {
+		return []byte("0"), nil
+	}
 	var names []string
-	for mask, label := range labels_AUTOTUNE_AXIS {
+	for i := 0; i < 4; i++ {
+		mask := AUTOTUNE_AXIS(1 << i)
 		if e&mask == mask {
-			names = append(names, label)
+			names = append(names, labels_AUTOTUNE_AXIS[mask])
 		}
 	}
 	return []byte(strings.Join(names, " | ")), nil
@@ -44,15 +56,11 @@ func (e *AUTOTUNE_AXIS) UnmarshalText(text []byte) error {
 	labels := strings.Split(string(text), " | ")
 	var mask AUTOTUNE_AXIS
 	for _, label := range labels {
-		found := false
-		for value, l := range labels_AUTOTUNE_AXIS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
+		if value, ok := values_AUTOTUNE_AXIS[label]; ok {
+			mask |= value
+		} else if value, err := strconv.Atoi(label); err == nil {
+			mask |= AUTOTUNE_AXIS(value)
+		} else {
 			return fmt.Errorf("invalid label '%s'", label)
 		}
 	}

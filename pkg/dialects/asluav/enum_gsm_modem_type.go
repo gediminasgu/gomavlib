@@ -4,7 +4,7 @@ package asluav
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type GSM_MODEM_TYPE uint32
@@ -21,35 +21,28 @@ var labels_GSM_MODEM_TYPE = map[GSM_MODEM_TYPE]string{
 	GSM_MODEM_TYPE_HUAWEI_E3372: "GSM_MODEM_TYPE_HUAWEI_E3372",
 }
 
+var values_GSM_MODEM_TYPE = map[string]GSM_MODEM_TYPE{
+	"GSM_MODEM_TYPE_UNKNOWN":      GSM_MODEM_TYPE_UNKNOWN,
+	"GSM_MODEM_TYPE_HUAWEI_E3372": GSM_MODEM_TYPE_HUAWEI_E3372,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GSM_MODEM_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_GSM_MODEM_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_GSM_MODEM_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *GSM_MODEM_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask GSM_MODEM_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_GSM_MODEM_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_GSM_MODEM_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = GSM_MODEM_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

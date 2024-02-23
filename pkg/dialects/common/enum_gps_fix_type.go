@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Type of GPS fix
@@ -43,35 +43,35 @@ var labels_GPS_FIX_TYPE = map[GPS_FIX_TYPE]string{
 	GPS_FIX_TYPE_PPP:       "GPS_FIX_TYPE_PPP",
 }
 
+var values_GPS_FIX_TYPE = map[string]GPS_FIX_TYPE{
+	"GPS_FIX_TYPE_NO_GPS":    GPS_FIX_TYPE_NO_GPS,
+	"GPS_FIX_TYPE_NO_FIX":    GPS_FIX_TYPE_NO_FIX,
+	"GPS_FIX_TYPE_2D_FIX":    GPS_FIX_TYPE_2D_FIX,
+	"GPS_FIX_TYPE_3D_FIX":    GPS_FIX_TYPE_3D_FIX,
+	"GPS_FIX_TYPE_DGPS":      GPS_FIX_TYPE_DGPS,
+	"GPS_FIX_TYPE_RTK_FLOAT": GPS_FIX_TYPE_RTK_FLOAT,
+	"GPS_FIX_TYPE_RTK_FIXED": GPS_FIX_TYPE_RTK_FIXED,
+	"GPS_FIX_TYPE_STATIC":    GPS_FIX_TYPE_STATIC,
+	"GPS_FIX_TYPE_PPP":       GPS_FIX_TYPE_PPP,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GPS_FIX_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_GPS_FIX_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_GPS_FIX_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *GPS_FIX_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask GPS_FIX_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_GPS_FIX_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_GPS_FIX_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = GPS_FIX_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

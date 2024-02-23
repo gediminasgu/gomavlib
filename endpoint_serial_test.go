@@ -1,7 +1,6 @@
 package gomavlib
 
 import (
-	"bytes"
 	"io"
 	"testing"
 
@@ -9,26 +8,77 @@ import (
 
 	"github.com/bluenviron/gomavlib/v2/pkg/dialect"
 	"github.com/bluenviron/gomavlib/v2/pkg/frame"
-	"github.com/bluenviron/gomavlib/v2/pkg/message"
 )
 
-var _ endpointChannelSingle = (*endpointSerial)(nil)
+var _ endpointChannelProvider = (*endpointSerial)(nil)
 
 func TestEndpointSerial(t *testing.T) {
-	endpointCreated := make(chan *dummyEndpoint, 1)
-	serialOpenFunc = func(name string, baud int) (io.ReadWriteCloser, error) {
-		de := newDummyEndpoint()
-		endpointCreated <- de
-		return de, nil
-	}
+	done := make(chan struct{})
+	n := 0
 
-	dial := &dialect.Dialect{
-		Version:  3,
-		Messages: []message.Message{&MessageHeartbeat{}},
+	serialOpenFunc = func(name string, baud int) (io.ReadWriteCloser, error) {
+		remote, local := newDummyReadWriterPair()
+
+		n++
+		switch n {
+		case 1:
+			return remote, nil
+
+		case 2:
+
+		default:
+			t.Errorf("should not happen")
+		}
+
+		go func() {
+			dialectRW, err := dialect.NewReadWriter(testDialect)
+			require.NoError(t, err)
+
+			rw, err := frame.NewReadWriter(frame.ReadWriterConf{
+				ReadWriter:  local,
+				DialectRW:   dialectRW,
+				OutVersion:  frame.V2,
+				OutSystemID: 11,
+			})
+			require.NoError(t, err)
+
+			for i := 0; i < 3; i++ {
+				err = rw.WriteMessage(&MessageHeartbeat{
+					Type:           1,
+					Autopilot:      2,
+					BaseMode:       3,
+					CustomMode:     6,
+					SystemStatus:   4,
+					MavlinkVersion: 5,
+				})
+				require.NoError(t, err)
+
+				fr, err := rw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &frame.V2Frame{
+					SequenceID:  byte(i),
+					SystemID:    10,
+					ComponentID: 1,
+					Message: &MessageHeartbeat{
+						Type:           6,
+						Autopilot:      5,
+						BaseMode:       4,
+						CustomMode:     3,
+						SystemStatus:   2,
+						MavlinkVersion: 1,
+					},
+					Checksum: fr.GetChecksum(),
+				}, fr)
+			}
+
+			close(done)
+		}()
+
+		return remote, nil
 	}
 
 	node, err := NewNode(NodeConf{
-		Dialect:     dial,
+		Dialect:     testDialect,
 		OutVersion:  V2,
 		OutSystemID: 10,
 		Endpoints: []EndpointConf{EndpointSerial{
@@ -40,93 +90,138 @@ func TestEndpointSerial(t *testing.T) {
 	require.NoError(t, err)
 	defer node.Close()
 
-	<-endpointCreated
-
 	evt := <-node.Events()
 	require.Equal(t, &EventChannelOpen{
 		Channel: evt.(*EventChannelOpen).Channel,
 	}, evt)
 
-	de := <-endpointCreated
-
-	dialectRW, err := dialect.NewReadWriter(dial)
-	require.NoError(t, err)
-
-	var buf bytes.Buffer
-
-	rw, err := frame.NewReadWriter(frame.ReadWriterConf{
-		ReadWriter:  &buf,
-		DialectRW:   dialectRW,
-		OutVersion:  frame.V2,
-		OutSystemID: 11,
-	})
-	require.NoError(t, err)
-
-	for i := 0; i < 3; i++ { //nolint:dupl
-		msg := &MessageHeartbeat{
-			Type:           1,
-			Autopilot:      2,
-			BaseMode:       3,
-			CustomMode:     6,
-			SystemStatus:   4,
-			MavlinkVersion: 5,
-		}
-		err = rw.WriteMessage(msg)
-		require.NoError(t, err)
-		de.push(buf.Bytes())
-		buf.Reset()
-
-		evt = <-node.Events()
+	for i := 0; i < 3; i++ {
+		evt := <-node.Events()
 		require.Equal(t, &EventFrame{
 			Frame: &frame.V2Frame{
 				SequenceID:  byte(i),
 				SystemID:    11,
 				ComponentID: 1,
-				Message:     msg,
-				Checksum:    evt.(*EventFrame).Frame.GetChecksum(),
+				Message: &MessageHeartbeat{
+					Type:           1,
+					Autopilot:      2,
+					BaseMode:       3,
+					CustomMode:     6,
+					SystemStatus:   4,
+					MavlinkVersion: 5,
+				},
+				Checksum: evt.(*EventFrame).Frame.GetChecksum(),
 			},
 			Channel: evt.(*EventFrame).Channel,
 		}, evt)
 
-		msg = &MessageHeartbeat{
+		err := node.WriteMessageAll(&MessageHeartbeat{
 			Type:           6,
 			Autopilot:      5,
 			BaseMode:       4,
 			CustomMode:     3,
 			SystemStatus:   2,
 			MavlinkVersion: 1,
-		}
-		node.WriteMessageAll(msg)
-
-		buf2 := de.pull()
-		buf.Write(buf2)
-		fr, err := rw.Read()
+		})
 		require.NoError(t, err)
-		require.Equal(t, &frame.V2Frame{
-			SequenceID:  byte(i),
-			SystemID:    10,
-			ComponentID: 1,
-			Message:     msg,
-			Checksum:    fr.GetChecksum(),
-		}, fr)
 	}
+
+	<-done
 }
 
 func TestEndpointSerialReconnect(t *testing.T) {
-	endpointCreated := make(chan *dummyEndpoint, 1)
-	serialOpenFunc = func(name string, baud int) (io.ReadWriteCloser, error) {
-		de := newDummyEndpoint()
-		endpointCreated <- de
-		return de, nil
-	}
+	done := make(chan struct{})
+	count := 0
 
-	dial := &dialect.Dialect{
-		Version:  3,
-		Messages: []message.Message{&MessageHeartbeat{}},
+	serialOpenFunc = func(name string, baud int) (io.ReadWriteCloser, error) {
+		remote, local := newDummyReadWriterPair()
+
+		switch count {
+		case 0: // skip first call to serialOpenFunc()
+
+		case 1:
+			go func() {
+				dialectRW, err := dialect.NewReadWriter(testDialect)
+				require.NoError(t, err)
+
+				rw, err := frame.NewReadWriter(frame.ReadWriterConf{
+					ReadWriter:  local,
+					DialectRW:   dialectRW,
+					OutVersion:  frame.V2,
+					OutSystemID: 11,
+				})
+				require.NoError(t, err)
+
+				err = rw.WriteMessage(&MessageHeartbeat{
+					Type:           1,
+					Autopilot:      2,
+					BaseMode:       3,
+					CustomMode:     6,
+					SystemStatus:   4,
+					MavlinkVersion: 5,
+				})
+				require.NoError(t, err)
+
+				fr, err := rw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &frame.V2Frame{
+					SequenceID:  0,
+					SystemID:    10,
+					ComponentID: 1,
+					Message: &MessageHeartbeat{
+						Type:           6,
+						Autopilot:      5,
+						BaseMode:       4,
+						CustomMode:     3,
+						SystemStatus:   2,
+						MavlinkVersion: 1,
+					},
+					Checksum: fr.GetChecksum(),
+				}, fr)
+
+				remote.simulateReadError()
+			}()
+
+		case 2:
+			go func() {
+				dialectRW, err := dialect.NewReadWriter(testDialect)
+				require.NoError(t, err)
+
+				rw, err := frame.NewReadWriter(frame.ReadWriterConf{
+					ReadWriter:  local,
+					DialectRW:   dialectRW,
+					OutVersion:  frame.V2,
+					OutSystemID: 11,
+				})
+				require.NoError(t, err)
+
+				fr, err := rw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &frame.V2Frame{
+					SequenceID:  0,
+					SystemID:    10,
+					ComponentID: 1,
+					Message: &MessageHeartbeat{
+						Type:           7,
+						Autopilot:      5,
+						BaseMode:       4,
+						CustomMode:     3,
+						SystemStatus:   2,
+						MavlinkVersion: 1,
+					},
+					Checksum: fr.GetChecksum(),
+				}, fr)
+
+				close(done)
+			}()
+		}
+
+		count++
+		return remote, nil
 	}
 
 	node, err := NewNode(NodeConf{
-		Dialect:     dial,
+		Dialect:     testDialect,
 		OutVersion:  V2,
 		OutSystemID: 10,
 		Endpoints: []EndpointConf{EndpointSerial{
@@ -138,82 +233,59 @@ func TestEndpointSerialReconnect(t *testing.T) {
 	require.NoError(t, err)
 	defer node.Close()
 
-	<-endpointCreated
-
 	evt := <-node.Events()
 	require.Equal(t, &EventChannelOpen{
 		Channel: evt.(*EventChannelOpen).Channel,
 	}, evt)
 
-	de := <-endpointCreated
+	evt = <-node.Events()
+	require.Equal(t, &EventFrame{
+		Frame: &frame.V2Frame{
+			SequenceID:  0,
+			SystemID:    11,
+			ComponentID: 1,
+			Message: &MessageHeartbeat{
+				Type:           1,
+				Autopilot:      2,
+				BaseMode:       3,
+				CustomMode:     6,
+				SystemStatus:   4,
+				MavlinkVersion: 5,
+			},
+			Checksum: evt.(*EventFrame).Frame.GetChecksum(),
+		},
+		Channel: evt.(*EventFrame).Channel,
+	}, evt)
 
-	dialectRW, err := dialect.NewReadWriter(dial)
-	require.NoError(t, err)
-
-	var buf bytes.Buffer
-
-	rw, err := frame.NewReadWriter(frame.ReadWriterConf{
-		ReadWriter:  &buf,
-		DialectRW:   dialectRW,
-		OutVersion:  frame.V2,
-		OutSystemID: 11,
+	err = node.WriteMessageAll(&MessageHeartbeat{
+		Type:           6,
+		Autopilot:      5,
+		BaseMode:       4,
+		CustomMode:     3,
+		SystemStatus:   2,
+		MavlinkVersion: 1,
 	})
 	require.NoError(t, err)
 
-	for i := 0; i < 2; i++ {
-		msg := &MessageHeartbeat{
-			Type:           1,
-			Autopilot:      2,
-			BaseMode:       3,
-			CustomMode:     6,
-			SystemStatus:   4,
-			MavlinkVersion: 5,
-		}
-		err = rw.WriteMessage(msg)
-		require.NoError(t, err)
-		de.push(buf.Bytes())
-		buf.Reset()
+	evt = <-node.Events()
+	require.Equal(t, &EventChannelClose{
+		Channel: evt.(*EventChannelClose).Channel,
+	}, evt)
 
-		evt := <-node.Events()
-		require.Equal(t, &EventFrame{
-			Frame: &frame.V2Frame{
-				SequenceID:  byte(i),
-				SystemID:    11,
-				ComponentID: 1,
-				Message:     msg,
-				Checksum:    evt.(*EventFrame).Frame.GetChecksum(),
-			},
-			Channel: evt.(*EventFrame).Channel,
-		}, evt)
-	}
+	evt = <-node.Events()
+	require.Equal(t, &EventChannelOpen{
+		Channel: evt.(*EventChannelOpen).Channel,
+	}, evt)
 
-	de.simulateReadError()
-	de = <-endpointCreated
+	err = node.WriteMessageAll(&MessageHeartbeat{
+		Type:           7,
+		Autopilot:      5,
+		BaseMode:       4,
+		CustomMode:     3,
+		SystemStatus:   2,
+		MavlinkVersion: 1,
+	})
+	require.NoError(t, err)
 
-	for i := 0; i < 2; i++ {
-		msg := &MessageHeartbeat{
-			Type:           1,
-			Autopilot:      2,
-			BaseMode:       3,
-			CustomMode:     6,
-			SystemStatus:   4,
-			MavlinkVersion: 5,
-		}
-		err = rw.WriteMessage(msg)
-		require.NoError(t, err)
-		de.chOut <- buf.Bytes()
-		buf.Reset()
-
-		evt := <-node.Events()
-		require.Equal(t, &EventFrame{
-			Frame: &frame.V2Frame{
-				SequenceID:  2 + byte(i),
-				SystemID:    11,
-				ComponentID: 1,
-				Message:     msg,
-				Checksum:    evt.(*EventFrame).Frame.GetChecksum(),
-			},
-			Channel: evt.(*EventFrame).Channel,
-		}, evt)
-	}
+	<-done
 }

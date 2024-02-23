@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Flags to indicate the status of camera storage.
@@ -28,35 +28,30 @@ var labels_STORAGE_STATUS = map[STORAGE_STATUS]string{
 	STORAGE_STATUS_NOT_SUPPORTED: "STORAGE_STATUS_NOT_SUPPORTED",
 }
 
+var values_STORAGE_STATUS = map[string]STORAGE_STATUS{
+	"STORAGE_STATUS_EMPTY":         STORAGE_STATUS_EMPTY,
+	"STORAGE_STATUS_UNFORMATTED":   STORAGE_STATUS_UNFORMATTED,
+	"STORAGE_STATUS_READY":         STORAGE_STATUS_READY,
+	"STORAGE_STATUS_NOT_SUPPORTED": STORAGE_STATUS_NOT_SUPPORTED,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e STORAGE_STATUS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_STORAGE_STATUS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_STORAGE_STATUS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *STORAGE_STATUS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask STORAGE_STATUS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_STORAGE_STATUS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_STORAGE_STATUS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = STORAGE_STATUS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

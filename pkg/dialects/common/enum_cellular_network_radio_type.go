@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Cellular network radio type
@@ -26,35 +26,31 @@ var labels_CELLULAR_NETWORK_RADIO_TYPE = map[CELLULAR_NETWORK_RADIO_TYPE]string{
 	CELLULAR_NETWORK_RADIO_TYPE_LTE:   "CELLULAR_NETWORK_RADIO_TYPE_LTE",
 }
 
+var values_CELLULAR_NETWORK_RADIO_TYPE = map[string]CELLULAR_NETWORK_RADIO_TYPE{
+	"CELLULAR_NETWORK_RADIO_TYPE_NONE":  CELLULAR_NETWORK_RADIO_TYPE_NONE,
+	"CELLULAR_NETWORK_RADIO_TYPE_GSM":   CELLULAR_NETWORK_RADIO_TYPE_GSM,
+	"CELLULAR_NETWORK_RADIO_TYPE_CDMA":  CELLULAR_NETWORK_RADIO_TYPE_CDMA,
+	"CELLULAR_NETWORK_RADIO_TYPE_WCDMA": CELLULAR_NETWORK_RADIO_TYPE_WCDMA,
+	"CELLULAR_NETWORK_RADIO_TYPE_LTE":   CELLULAR_NETWORK_RADIO_TYPE_LTE,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e CELLULAR_NETWORK_RADIO_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_CELLULAR_NETWORK_RADIO_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_CELLULAR_NETWORK_RADIO_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *CELLULAR_NETWORK_RADIO_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask CELLULAR_NETWORK_RADIO_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_CELLULAR_NETWORK_RADIO_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_CELLULAR_NETWORK_RADIO_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = CELLULAR_NETWORK_RADIO_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

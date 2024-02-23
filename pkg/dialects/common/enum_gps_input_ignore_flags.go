@@ -4,6 +4,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -39,12 +40,27 @@ var labels_GPS_INPUT_IGNORE_FLAGS = map[GPS_INPUT_IGNORE_FLAGS]string{
 	GPS_INPUT_IGNORE_FLAG_VERTICAL_ACCURACY:   "GPS_INPUT_IGNORE_FLAG_VERTICAL_ACCURACY",
 }
 
+var values_GPS_INPUT_IGNORE_FLAGS = map[string]GPS_INPUT_IGNORE_FLAGS{
+	"GPS_INPUT_IGNORE_FLAG_ALT":                 GPS_INPUT_IGNORE_FLAG_ALT,
+	"GPS_INPUT_IGNORE_FLAG_HDOP":                GPS_INPUT_IGNORE_FLAG_HDOP,
+	"GPS_INPUT_IGNORE_FLAG_VDOP":                GPS_INPUT_IGNORE_FLAG_VDOP,
+	"GPS_INPUT_IGNORE_FLAG_VEL_HORIZ":           GPS_INPUT_IGNORE_FLAG_VEL_HORIZ,
+	"GPS_INPUT_IGNORE_FLAG_VEL_VERT":            GPS_INPUT_IGNORE_FLAG_VEL_VERT,
+	"GPS_INPUT_IGNORE_FLAG_SPEED_ACCURACY":      GPS_INPUT_IGNORE_FLAG_SPEED_ACCURACY,
+	"GPS_INPUT_IGNORE_FLAG_HORIZONTAL_ACCURACY": GPS_INPUT_IGNORE_FLAG_HORIZONTAL_ACCURACY,
+	"GPS_INPUT_IGNORE_FLAG_VERTICAL_ACCURACY":   GPS_INPUT_IGNORE_FLAG_VERTICAL_ACCURACY,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e GPS_INPUT_IGNORE_FLAGS) MarshalText() ([]byte, error) {
+	if e == 0 {
+		return []byte("0"), nil
+	}
 	var names []string
-	for mask, label := range labels_GPS_INPUT_IGNORE_FLAGS {
+	for i := 0; i < 8; i++ {
+		mask := GPS_INPUT_IGNORE_FLAGS(1 << i)
 		if e&mask == mask {
-			names = append(names, label)
+			names = append(names, labels_GPS_INPUT_IGNORE_FLAGS[mask])
 		}
 	}
 	return []byte(strings.Join(names, " | ")), nil
@@ -55,15 +71,11 @@ func (e *GPS_INPUT_IGNORE_FLAGS) UnmarshalText(text []byte) error {
 	labels := strings.Split(string(text), " | ")
 	var mask GPS_INPUT_IGNORE_FLAGS
 	for _, label := range labels {
-		found := false
-		for value, l := range labels_GPS_INPUT_IGNORE_FLAGS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
+		if value, ok := values_GPS_INPUT_IGNORE_FLAGS[label]; ok {
+			mask |= value
+		} else if value, err := strconv.Atoi(label); err == nil {
+			mask |= GPS_INPUT_IGNORE_FLAGS(value)
+		} else {
 			return fmt.Errorf("invalid label '%s'", label)
 		}
 	}

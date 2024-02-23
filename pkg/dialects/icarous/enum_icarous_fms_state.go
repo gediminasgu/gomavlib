@@ -4,7 +4,7 @@ package icarous
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type ICAROUS_FMS_STATE uint32
@@ -27,35 +27,32 @@ var labels_ICAROUS_FMS_STATE = map[ICAROUS_FMS_STATE]string{
 	ICAROUS_FMS_STATE_LAND:     "ICAROUS_FMS_STATE_LAND",
 }
 
+var values_ICAROUS_FMS_STATE = map[string]ICAROUS_FMS_STATE{
+	"ICAROUS_FMS_STATE_IDLE":     ICAROUS_FMS_STATE_IDLE,
+	"ICAROUS_FMS_STATE_TAKEOFF":  ICAROUS_FMS_STATE_TAKEOFF,
+	"ICAROUS_FMS_STATE_CLIMB":    ICAROUS_FMS_STATE_CLIMB,
+	"ICAROUS_FMS_STATE_CRUISE":   ICAROUS_FMS_STATE_CRUISE,
+	"ICAROUS_FMS_STATE_APPROACH": ICAROUS_FMS_STATE_APPROACH,
+	"ICAROUS_FMS_STATE_LAND":     ICAROUS_FMS_STATE_LAND,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e ICAROUS_FMS_STATE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_ICAROUS_FMS_STATE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_ICAROUS_FMS_STATE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *ICAROUS_FMS_STATE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask ICAROUS_FMS_STATE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_ICAROUS_FMS_STATE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_ICAROUS_FMS_STATE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = ICAROUS_FMS_STATE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Indicates the ESC connection type.
@@ -34,35 +34,32 @@ var labels_ESC_CONNECTION_TYPE = map[ESC_CONNECTION_TYPE]string{
 	ESC_CONNECTION_TYPE_DSHOT:   "ESC_CONNECTION_TYPE_DSHOT",
 }
 
+var values_ESC_CONNECTION_TYPE = map[string]ESC_CONNECTION_TYPE{
+	"ESC_CONNECTION_TYPE_PPM":     ESC_CONNECTION_TYPE_PPM,
+	"ESC_CONNECTION_TYPE_SERIAL":  ESC_CONNECTION_TYPE_SERIAL,
+	"ESC_CONNECTION_TYPE_ONESHOT": ESC_CONNECTION_TYPE_ONESHOT,
+	"ESC_CONNECTION_TYPE_I2C":     ESC_CONNECTION_TYPE_I2C,
+	"ESC_CONNECTION_TYPE_CAN":     ESC_CONNECTION_TYPE_CAN,
+	"ESC_CONNECTION_TYPE_DSHOT":   ESC_CONNECTION_TYPE_DSHOT,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e ESC_CONNECTION_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_ESC_CONNECTION_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_ESC_CONNECTION_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *ESC_CONNECTION_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask ESC_CONNECTION_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_ESC_CONNECTION_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_ESC_CONNECTION_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = ESC_CONNECTION_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

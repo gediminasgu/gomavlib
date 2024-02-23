@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Direction of VTOL transition
@@ -31,35 +31,31 @@ var labels_VTOL_TRANSITION_HEADING = map[VTOL_TRANSITION_HEADING]string{
 	VTOL_TRANSITION_HEADING_ANY:             "VTOL_TRANSITION_HEADING_ANY",
 }
 
+var values_VTOL_TRANSITION_HEADING = map[string]VTOL_TRANSITION_HEADING{
+	"VTOL_TRANSITION_HEADING_VEHICLE_DEFAULT": VTOL_TRANSITION_HEADING_VEHICLE_DEFAULT,
+	"VTOL_TRANSITION_HEADING_NEXT_WAYPOINT":   VTOL_TRANSITION_HEADING_NEXT_WAYPOINT,
+	"VTOL_TRANSITION_HEADING_TAKEOFF":         VTOL_TRANSITION_HEADING_TAKEOFF,
+	"VTOL_TRANSITION_HEADING_SPECIFIED":       VTOL_TRANSITION_HEADING_SPECIFIED,
+	"VTOL_TRANSITION_HEADING_ANY":             VTOL_TRANSITION_HEADING_ANY,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e VTOL_TRANSITION_HEADING) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_VTOL_TRANSITION_HEADING {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_VTOL_TRANSITION_HEADING[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *VTOL_TRANSITION_HEADING) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask VTOL_TRANSITION_HEADING
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_VTOL_TRANSITION_HEADING {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_VTOL_TRANSITION_HEADING[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = VTOL_TRANSITION_HEADING(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

@@ -4,7 +4,7 @@ package uavionix
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Emergency status encoding
@@ -32,35 +32,34 @@ var labels_UAVIONIX_ADSB_EMERGENCY_STATUS = map[UAVIONIX_ADSB_EMERGENCY_STATUS]s
 	UAVIONIX_ADSB_OUT_RESERVED:                        "UAVIONIX_ADSB_OUT_RESERVED",
 }
 
+var values_UAVIONIX_ADSB_EMERGENCY_STATUS = map[string]UAVIONIX_ADSB_EMERGENCY_STATUS{
+	"UAVIONIX_ADSB_OUT_NO_EMERGENCY":                    UAVIONIX_ADSB_OUT_NO_EMERGENCY,
+	"UAVIONIX_ADSB_OUT_GENERAL_EMERGENCY":               UAVIONIX_ADSB_OUT_GENERAL_EMERGENCY,
+	"UAVIONIX_ADSB_OUT_LIFEGUARD_EMERGENCY":             UAVIONIX_ADSB_OUT_LIFEGUARD_EMERGENCY,
+	"UAVIONIX_ADSB_OUT_MINIMUM_FUEL_EMERGENCY":          UAVIONIX_ADSB_OUT_MINIMUM_FUEL_EMERGENCY,
+	"UAVIONIX_ADSB_OUT_NO_COMM_EMERGENCY":               UAVIONIX_ADSB_OUT_NO_COMM_EMERGENCY,
+	"UAVIONIX_ADSB_OUT_UNLAWFUL_INTERFERANCE_EMERGENCY": UAVIONIX_ADSB_OUT_UNLAWFUL_INTERFERANCE_EMERGENCY,
+	"UAVIONIX_ADSB_OUT_DOWNED_AIRCRAFT_EMERGENCY":       UAVIONIX_ADSB_OUT_DOWNED_AIRCRAFT_EMERGENCY,
+	"UAVIONIX_ADSB_OUT_RESERVED":                        UAVIONIX_ADSB_OUT_RESERVED,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e UAVIONIX_ADSB_EMERGENCY_STATUS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_UAVIONIX_ADSB_EMERGENCY_STATUS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_UAVIONIX_ADSB_EMERGENCY_STATUS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *UAVIONIX_ADSB_EMERGENCY_STATUS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask UAVIONIX_ADSB_EMERGENCY_STATUS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_UAVIONIX_ADSB_EMERGENCY_STATUS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_UAVIONIX_ADSB_EMERGENCY_STATUS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = UAVIONIX_ADSB_EMERGENCY_STATUS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

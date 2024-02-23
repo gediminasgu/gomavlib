@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type MAG_CAL_STATUS uint32
@@ -31,35 +31,34 @@ var labels_MAG_CAL_STATUS = map[MAG_CAL_STATUS]string{
 	MAG_CAL_BAD_RADIUS:       "MAG_CAL_BAD_RADIUS",
 }
 
+var values_MAG_CAL_STATUS = map[string]MAG_CAL_STATUS{
+	"MAG_CAL_NOT_STARTED":      MAG_CAL_NOT_STARTED,
+	"MAG_CAL_WAITING_TO_START": MAG_CAL_WAITING_TO_START,
+	"MAG_CAL_RUNNING_STEP_ONE": MAG_CAL_RUNNING_STEP_ONE,
+	"MAG_CAL_RUNNING_STEP_TWO": MAG_CAL_RUNNING_STEP_TWO,
+	"MAG_CAL_SUCCESS":          MAG_CAL_SUCCESS,
+	"MAG_CAL_FAILED":           MAG_CAL_FAILED,
+	"MAG_CAL_BAD_ORIENTATION":  MAG_CAL_BAD_ORIENTATION,
+	"MAG_CAL_BAD_RADIUS":       MAG_CAL_BAD_RADIUS,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAG_CAL_STATUS) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAG_CAL_STATUS {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAG_CAL_STATUS[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAG_CAL_STATUS) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAG_CAL_STATUS
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAG_CAL_STATUS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAG_CAL_STATUS[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAG_CAL_STATUS(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

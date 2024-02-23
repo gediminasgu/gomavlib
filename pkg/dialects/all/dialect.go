@@ -210,7 +210,7 @@ var dial = &dialect.Dialect{
 		&MessageUtmGlobalPosition{},
 		&MessageDebugFloatArray{},
 		&MessageOrbitExecutionStatus{},
-		&MessageSmartBatteryInfo{},
+		&MessageBatteryInfo{},
 		&MessageGeneratorStatus{},
 		&MessageActuatorOutputStatus{},
 		&MessageTimeEstimateToTarget{},
@@ -255,6 +255,10 @@ var dial = &dialect.Dialect{
 		// csairlink
 		&MessageAirlinkAuth{},
 		&MessageAirlinkAuthResponse{},
+		&MessageAirlinkEyeGsHolePushRequest{},
+		&MessageAirlinkEyeGsHolePushResponse{},
+		&MessageAirlinkEyeHp{},
+		&MessageAirlinkEyeTurnInit{},
 		// ardupilotmega
 		&MessageSensorOffsets{},
 		&MessageSetMagOffsets{},
@@ -341,9 +345,10 @@ var dial = &dialect.Dialect{
 		&MessageSensorAirflowAngles{},
 		// development
 		&MessageParamAckTransaction{},
-		&MessageMissionChecksum{},
 		&MessageAirspeed{},
 		&MessageWifiNetworkInfo{},
+		&MessageSetVelocityLimits{},
+		&MessageVelocityLimits{},
 		&MessageFigureEightExecutionStatus{},
 		&MessageBatteryStatusV2{},
 		&MessageComponentInformationBasic{},
@@ -351,6 +356,7 @@ var dial = &dialect.Dialect{
 		&MessageGroupEnd{},
 		&MessageAvailableModes{},
 		&MessageCurrentMode{},
+		&MessageAvailableModesMonitor{},
 		&MessageTargetAbsolute{},
 		&MessageTargetRelative{},
 		// pythonarraytest

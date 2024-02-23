@@ -4,6 +4,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -31,12 +32,24 @@ var labels_SERIAL_CONTROL_FLAG = map[SERIAL_CONTROL_FLAG]string{
 	SERIAL_CONTROL_FLAG_MULTI:     "SERIAL_CONTROL_FLAG_MULTI",
 }
 
+var values_SERIAL_CONTROL_FLAG = map[string]SERIAL_CONTROL_FLAG{
+	"SERIAL_CONTROL_FLAG_REPLY":     SERIAL_CONTROL_FLAG_REPLY,
+	"SERIAL_CONTROL_FLAG_RESPOND":   SERIAL_CONTROL_FLAG_RESPOND,
+	"SERIAL_CONTROL_FLAG_EXCLUSIVE": SERIAL_CONTROL_FLAG_EXCLUSIVE,
+	"SERIAL_CONTROL_FLAG_BLOCKING":  SERIAL_CONTROL_FLAG_BLOCKING,
+	"SERIAL_CONTROL_FLAG_MULTI":     SERIAL_CONTROL_FLAG_MULTI,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e SERIAL_CONTROL_FLAG) MarshalText() ([]byte, error) {
+	if e == 0 {
+		return []byte("0"), nil
+	}
 	var names []string
-	for mask, label := range labels_SERIAL_CONTROL_FLAG {
+	for i := 0; i < 5; i++ {
+		mask := SERIAL_CONTROL_FLAG(1 << i)
 		if e&mask == mask {
-			names = append(names, label)
+			names = append(names, labels_SERIAL_CONTROL_FLAG[mask])
 		}
 	}
 	return []byte(strings.Join(names, " | ")), nil
@@ -47,15 +60,11 @@ func (e *SERIAL_CONTROL_FLAG) UnmarshalText(text []byte) error {
 	labels := strings.Split(string(text), " | ")
 	var mask SERIAL_CONTROL_FLAG
 	for _, label := range labels {
-		found := false
-		for value, l := range labels_SERIAL_CONTROL_FLAG {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
+		if value, ok := values_SERIAL_CONTROL_FLAG[label]; ok {
+			mask |= value
+		} else if value, err := strconv.Atoi(label); err == nil {
+			mask |= SERIAL_CONTROL_FLAG(value)
+		} else {
 			return fmt.Errorf("invalid label '%s'", label)
 		}
 	}

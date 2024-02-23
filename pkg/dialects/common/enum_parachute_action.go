@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Parachute actions. Trigger release and enable/disable auto-release.
@@ -25,35 +25,29 @@ var labels_PARACHUTE_ACTION = map[PARACHUTE_ACTION]string{
 	PARACHUTE_RELEASE: "PARACHUTE_RELEASE",
 }
 
+var values_PARACHUTE_ACTION = map[string]PARACHUTE_ACTION{
+	"PARACHUTE_DISABLE": PARACHUTE_DISABLE,
+	"PARACHUTE_ENABLE":  PARACHUTE_ENABLE,
+	"PARACHUTE_RELEASE": PARACHUTE_RELEASE,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e PARACHUTE_ACTION) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_PARACHUTE_ACTION {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_PARACHUTE_ACTION[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *PARACHUTE_ACTION) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask PARACHUTE_ACTION
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_PARACHUTE_ACTION {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_PARACHUTE_ACTION[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = PARACHUTE_ACTION(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

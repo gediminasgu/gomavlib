@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // These flags are used to diagnose the failure state of CELLULAR_STATUS
@@ -28,35 +28,30 @@ var labels_CELLULAR_NETWORK_FAILED_REASON = map[CELLULAR_NETWORK_FAILED_REASON]s
 	CELLULAR_NETWORK_FAILED_REASON_SIM_ERROR:   "CELLULAR_NETWORK_FAILED_REASON_SIM_ERROR",
 }
 
+var values_CELLULAR_NETWORK_FAILED_REASON = map[string]CELLULAR_NETWORK_FAILED_REASON{
+	"CELLULAR_NETWORK_FAILED_REASON_NONE":        CELLULAR_NETWORK_FAILED_REASON_NONE,
+	"CELLULAR_NETWORK_FAILED_REASON_UNKNOWN":     CELLULAR_NETWORK_FAILED_REASON_UNKNOWN,
+	"CELLULAR_NETWORK_FAILED_REASON_SIM_MISSING": CELLULAR_NETWORK_FAILED_REASON_SIM_MISSING,
+	"CELLULAR_NETWORK_FAILED_REASON_SIM_ERROR":   CELLULAR_NETWORK_FAILED_REASON_SIM_ERROR,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e CELLULAR_NETWORK_FAILED_REASON) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_CELLULAR_NETWORK_FAILED_REASON {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_CELLULAR_NETWORK_FAILED_REASON[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *CELLULAR_NETWORK_FAILED_REASON) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask CELLULAR_NETWORK_FAILED_REASON
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_CELLULAR_NETWORK_FAILED_REASON {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_CELLULAR_NETWORK_FAILED_REASON[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = CELLULAR_NETWORK_FAILED_REASON(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

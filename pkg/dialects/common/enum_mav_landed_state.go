@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Enumeration of landed detector states
@@ -31,35 +31,31 @@ var labels_MAV_LANDED_STATE = map[MAV_LANDED_STATE]string{
 	MAV_LANDED_STATE_LANDING:   "MAV_LANDED_STATE_LANDING",
 }
 
+var values_MAV_LANDED_STATE = map[string]MAV_LANDED_STATE{
+	"MAV_LANDED_STATE_UNDEFINED": MAV_LANDED_STATE_UNDEFINED,
+	"MAV_LANDED_STATE_ON_GROUND": MAV_LANDED_STATE_ON_GROUND,
+	"MAV_LANDED_STATE_IN_AIR":    MAV_LANDED_STATE_IN_AIR,
+	"MAV_LANDED_STATE_TAKEOFF":   MAV_LANDED_STATE_TAKEOFF,
+	"MAV_LANDED_STATE_LANDING":   MAV_LANDED_STATE_LANDING,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_LANDED_STATE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_LANDED_STATE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_LANDED_STATE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_LANDED_STATE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_LANDED_STATE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_LANDED_STATE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_LANDED_STATE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_LANDED_STATE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Camera Modes.
@@ -25,35 +25,29 @@ var labels_CAMERA_MODE = map[CAMERA_MODE]string{
 	CAMERA_MODE_IMAGE_SURVEY: "CAMERA_MODE_IMAGE_SURVEY",
 }
 
+var values_CAMERA_MODE = map[string]CAMERA_MODE{
+	"CAMERA_MODE_IMAGE":        CAMERA_MODE_IMAGE,
+	"CAMERA_MODE_VIDEO":        CAMERA_MODE_VIDEO,
+	"CAMERA_MODE_IMAGE_SURVEY": CAMERA_MODE_IMAGE_SURVEY,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e CAMERA_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_CAMERA_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_CAMERA_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *CAMERA_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask CAMERA_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_CAMERA_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_CAMERA_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = CAMERA_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

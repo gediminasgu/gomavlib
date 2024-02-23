@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Possible responses from a CELLULAR_CONFIG message.
@@ -31,35 +31,31 @@ var labels_CELLULAR_CONFIG_RESPONSE = map[CELLULAR_CONFIG_RESPONSE]string{
 	CELLULAR_CONFIG_BLOCKED_PUK_REQUIRED: "CELLULAR_CONFIG_BLOCKED_PUK_REQUIRED",
 }
 
+var values_CELLULAR_CONFIG_RESPONSE = map[string]CELLULAR_CONFIG_RESPONSE{
+	"CELLULAR_CONFIG_RESPONSE_ACCEPTED":    CELLULAR_CONFIG_RESPONSE_ACCEPTED,
+	"CELLULAR_CONFIG_RESPONSE_APN_ERROR":   CELLULAR_CONFIG_RESPONSE_APN_ERROR,
+	"CELLULAR_CONFIG_RESPONSE_PIN_ERROR":   CELLULAR_CONFIG_RESPONSE_PIN_ERROR,
+	"CELLULAR_CONFIG_RESPONSE_REJECTED":    CELLULAR_CONFIG_RESPONSE_REJECTED,
+	"CELLULAR_CONFIG_BLOCKED_PUK_REQUIRED": CELLULAR_CONFIG_BLOCKED_PUK_REQUIRED,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e CELLULAR_CONFIG_RESPONSE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_CELLULAR_CONFIG_RESPONSE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_CELLULAR_CONFIG_RESPONSE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *CELLULAR_CONFIG_RESPONSE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask CELLULAR_CONFIG_RESPONSE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_CELLULAR_CONFIG_RESPONSE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_CELLULAR_CONFIG_RESPONSE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = CELLULAR_CONFIG_RESPONSE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

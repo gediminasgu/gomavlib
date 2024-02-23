@@ -4,6 +4,7 @@ package development
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -22,12 +23,21 @@ var labels_AIRSPEED_SENSOR_FLAGS = map[AIRSPEED_SENSOR_FLAGS]string{
 	AIRSPEED_SENSOR_USING:     "AIRSPEED_SENSOR_USING",
 }
 
+var values_AIRSPEED_SENSOR_FLAGS = map[string]AIRSPEED_SENSOR_FLAGS{
+	"AIRSPEED_SENSOR_UNHEALTHY": AIRSPEED_SENSOR_UNHEALTHY,
+	"AIRSPEED_SENSOR_USING":     AIRSPEED_SENSOR_USING,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e AIRSPEED_SENSOR_FLAGS) MarshalText() ([]byte, error) {
+	if e == 0 {
+		return []byte("0"), nil
+	}
 	var names []string
-	for mask, label := range labels_AIRSPEED_SENSOR_FLAGS {
+	for i := 0; i < 2; i++ {
+		mask := AIRSPEED_SENSOR_FLAGS(1 << i)
 		if e&mask == mask {
-			names = append(names, label)
+			names = append(names, labels_AIRSPEED_SENSOR_FLAGS[mask])
 		}
 	}
 	return []byte(strings.Join(names, " | ")), nil
@@ -38,15 +48,11 @@ func (e *AIRSPEED_SENSOR_FLAGS) UnmarshalText(text []byte) error {
 	labels := strings.Split(string(text), " | ")
 	var mask AIRSPEED_SENSOR_FLAGS
 	for _, label := range labels {
-		found := false
-		for value, l := range labels_AIRSPEED_SENSOR_FLAGS {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
+		if value, ok := values_AIRSPEED_SENSOR_FLAGS[label]; ok {
+			mask |= value
+		} else if value, err := strconv.Atoi(label); err == nil {
+			mask |= AIRSPEED_SENSOR_FLAGS(value)
+		} else {
 			return fmt.Errorf("invalid label '%s'", label)
 		}
 	}

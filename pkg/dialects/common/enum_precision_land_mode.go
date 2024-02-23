@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Precision land modes (used in MAV_CMD_NAV_LAND).
@@ -25,35 +25,29 @@ var labels_PRECISION_LAND_MODE = map[PRECISION_LAND_MODE]string{
 	PRECISION_LAND_MODE_REQUIRED:      "PRECISION_LAND_MODE_REQUIRED",
 }
 
+var values_PRECISION_LAND_MODE = map[string]PRECISION_LAND_MODE{
+	"PRECISION_LAND_MODE_DISABLED":      PRECISION_LAND_MODE_DISABLED,
+	"PRECISION_LAND_MODE_OPPORTUNISTIC": PRECISION_LAND_MODE_OPPORTUNISTIC,
+	"PRECISION_LAND_MODE_REQUIRED":      PRECISION_LAND_MODE_REQUIRED,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e PRECISION_LAND_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_PRECISION_LAND_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_PRECISION_LAND_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *PRECISION_LAND_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask PRECISION_LAND_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_PRECISION_LAND_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_PRECISION_LAND_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = PRECISION_LAND_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

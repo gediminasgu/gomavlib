@@ -4,7 +4,7 @@ package development
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Standard modes with a well understood meaning across flight stacks and vehicle types.
@@ -87,35 +87,36 @@ var labels_MAV_STANDARD_MODE = map[MAV_STANDARD_MODE]string{
 	MAV_STANDARD_MODE_TAKEOFF:       "MAV_STANDARD_MODE_TAKEOFF",
 }
 
+var values_MAV_STANDARD_MODE = map[string]MAV_STANDARD_MODE{
+	"MAV_STANDARD_MODE_NON_STANDARD":  MAV_STANDARD_MODE_NON_STANDARD,
+	"MAV_STANDARD_MODE_POSITION_HOLD": MAV_STANDARD_MODE_POSITION_HOLD,
+	"MAV_STANDARD_MODE_ORBIT":         MAV_STANDARD_MODE_ORBIT,
+	"MAV_STANDARD_MODE_CRUISE":        MAV_STANDARD_MODE_CRUISE,
+	"MAV_STANDARD_MODE_ALTITUDE_HOLD": MAV_STANDARD_MODE_ALTITUDE_HOLD,
+	"MAV_STANDARD_MODE_RETURN_HOME":   MAV_STANDARD_MODE_RETURN_HOME,
+	"MAV_STANDARD_MODE_SAFE_RECOVERY": MAV_STANDARD_MODE_SAFE_RECOVERY,
+	"MAV_STANDARD_MODE_MISSION":       MAV_STANDARD_MODE_MISSION,
+	"MAV_STANDARD_MODE_LAND":          MAV_STANDARD_MODE_LAND,
+	"MAV_STANDARD_MODE_TAKEOFF":       MAV_STANDARD_MODE_TAKEOFF,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_STANDARD_MODE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_STANDARD_MODE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_STANDARD_MODE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_STANDARD_MODE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_STANDARD_MODE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_STANDARD_MODE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_STANDARD_MODE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_STANDARD_MODE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

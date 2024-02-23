@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Enumeration for battery charge states.
@@ -40,35 +40,34 @@ var labels_MAV_BATTERY_CHARGE_STATE = map[MAV_BATTERY_CHARGE_STATE]string{
 	MAV_BATTERY_CHARGE_STATE_CHARGING:  "MAV_BATTERY_CHARGE_STATE_CHARGING",
 }
 
+var values_MAV_BATTERY_CHARGE_STATE = map[string]MAV_BATTERY_CHARGE_STATE{
+	"MAV_BATTERY_CHARGE_STATE_UNDEFINED": MAV_BATTERY_CHARGE_STATE_UNDEFINED,
+	"MAV_BATTERY_CHARGE_STATE_OK":        MAV_BATTERY_CHARGE_STATE_OK,
+	"MAV_BATTERY_CHARGE_STATE_LOW":       MAV_BATTERY_CHARGE_STATE_LOW,
+	"MAV_BATTERY_CHARGE_STATE_CRITICAL":  MAV_BATTERY_CHARGE_STATE_CRITICAL,
+	"MAV_BATTERY_CHARGE_STATE_EMERGENCY": MAV_BATTERY_CHARGE_STATE_EMERGENCY,
+	"MAV_BATTERY_CHARGE_STATE_FAILED":    MAV_BATTERY_CHARGE_STATE_FAILED,
+	"MAV_BATTERY_CHARGE_STATE_UNHEALTHY": MAV_BATTERY_CHARGE_STATE_UNHEALTHY,
+	"MAV_BATTERY_CHARGE_STATE_CHARGING":  MAV_BATTERY_CHARGE_STATE_CHARGING,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_BATTERY_CHARGE_STATE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_BATTERY_CHARGE_STATE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_BATTERY_CHARGE_STATE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_BATTERY_CHARGE_STATE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_BATTERY_CHARGE_STATE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_BATTERY_CHARGE_STATE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_BATTERY_CHARGE_STATE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_BATTERY_CHARGE_STATE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

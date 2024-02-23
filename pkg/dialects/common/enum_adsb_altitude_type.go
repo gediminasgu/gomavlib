@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Enumeration of the ADSB altimeter types
@@ -22,35 +22,28 @@ var labels_ADSB_ALTITUDE_TYPE = map[ADSB_ALTITUDE_TYPE]string{
 	ADSB_ALTITUDE_TYPE_GEOMETRIC:    "ADSB_ALTITUDE_TYPE_GEOMETRIC",
 }
 
+var values_ADSB_ALTITUDE_TYPE = map[string]ADSB_ALTITUDE_TYPE{
+	"ADSB_ALTITUDE_TYPE_PRESSURE_QNH": ADSB_ALTITUDE_TYPE_PRESSURE_QNH,
+	"ADSB_ALTITUDE_TYPE_GEOMETRIC":    ADSB_ALTITUDE_TYPE_GEOMETRIC,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e ADSB_ALTITUDE_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_ADSB_ALTITUDE_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_ADSB_ALTITUDE_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *ADSB_ALTITUDE_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask ADSB_ALTITUDE_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_ADSB_ALTITUDE_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_ADSB_ALTITUDE_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = ADSB_ALTITUDE_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

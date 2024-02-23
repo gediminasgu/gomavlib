@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 type MAV_ODID_CLASS_EU uint32
@@ -39,35 +39,34 @@ var labels_MAV_ODID_CLASS_EU = map[MAV_ODID_CLASS_EU]string{
 	MAV_ODID_CLASS_EU_CLASS_6:    "MAV_ODID_CLASS_EU_CLASS_6",
 }
 
+var values_MAV_ODID_CLASS_EU = map[string]MAV_ODID_CLASS_EU{
+	"MAV_ODID_CLASS_EU_UNDECLARED": MAV_ODID_CLASS_EU_UNDECLARED,
+	"MAV_ODID_CLASS_EU_CLASS_0":    MAV_ODID_CLASS_EU_CLASS_0,
+	"MAV_ODID_CLASS_EU_CLASS_1":    MAV_ODID_CLASS_EU_CLASS_1,
+	"MAV_ODID_CLASS_EU_CLASS_2":    MAV_ODID_CLASS_EU_CLASS_2,
+	"MAV_ODID_CLASS_EU_CLASS_3":    MAV_ODID_CLASS_EU_CLASS_3,
+	"MAV_ODID_CLASS_EU_CLASS_4":    MAV_ODID_CLASS_EU_CLASS_4,
+	"MAV_ODID_CLASS_EU_CLASS_5":    MAV_ODID_CLASS_EU_CLASS_5,
+	"MAV_ODID_CLASS_EU_CLASS_6":    MAV_ODID_CLASS_EU_CLASS_6,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e MAV_ODID_CLASS_EU) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_MAV_ODID_CLASS_EU {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_MAV_ODID_CLASS_EU[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *MAV_ODID_CLASS_EU) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask MAV_ODID_CLASS_EU
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_MAV_ODID_CLASS_EU {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_MAV_ODID_CLASS_EU[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = MAV_ODID_CLASS_EU(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 

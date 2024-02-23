@@ -4,7 +4,7 @@ package common
 
 import (
 	"fmt"
-	"strings"
+	"strconv"
 )
 
 // Type of landing target
@@ -28,35 +28,30 @@ var labels_LANDING_TARGET_TYPE = map[LANDING_TARGET_TYPE]string{
 	LANDING_TARGET_TYPE_VISION_OTHER:    "LANDING_TARGET_TYPE_VISION_OTHER",
 }
 
+var values_LANDING_TARGET_TYPE = map[string]LANDING_TARGET_TYPE{
+	"LANDING_TARGET_TYPE_LIGHT_BEACON":    LANDING_TARGET_TYPE_LIGHT_BEACON,
+	"LANDING_TARGET_TYPE_RADIO_BEACON":    LANDING_TARGET_TYPE_RADIO_BEACON,
+	"LANDING_TARGET_TYPE_VISION_FIDUCIAL": LANDING_TARGET_TYPE_VISION_FIDUCIAL,
+	"LANDING_TARGET_TYPE_VISION_OTHER":    LANDING_TARGET_TYPE_VISION_OTHER,
+}
+
 // MarshalText implements the encoding.TextMarshaler interface.
 func (e LANDING_TARGET_TYPE) MarshalText() ([]byte, error) {
-	var names []string
-	for mask, label := range labels_LANDING_TARGET_TYPE {
-		if e&mask == mask {
-			names = append(names, label)
-		}
+	if name, ok := labels_LANDING_TARGET_TYPE[e]; ok {
+		return []byte(name), nil
 	}
-	return []byte(strings.Join(names, " | ")), nil
+	return []byte(strconv.Itoa(int(e))), nil
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaler interface.
 func (e *LANDING_TARGET_TYPE) UnmarshalText(text []byte) error {
-	labels := strings.Split(string(text), " | ")
-	var mask LANDING_TARGET_TYPE
-	for _, label := range labels {
-		found := false
-		for value, l := range labels_LANDING_TARGET_TYPE {
-			if l == label {
-				mask |= value
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid label '%s'", label)
-		}
+	if value, ok := values_LANDING_TARGET_TYPE[string(text)]; ok {
+		*e = value
+	} else if value, err := strconv.Atoi(string(text)); err == nil {
+		*e = LANDING_TARGET_TYPE(value)
+	} else {
+		return fmt.Errorf("invalid label '%s'", text)
 	}
-	*e = mask
 	return nil
 }
 
