@@ -195,5 +195,7 @@ func (ch *Channel) write(what interface{}) {
 	case ch.chWrite <- what:
 	case <-ch.ctx.Done():
 	default: // buffer is full
+		<-ch.chWrite
+		ch.chWrite <- what
 	}
 }
