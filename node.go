@@ -266,15 +266,7 @@ outer:
 			var err error
 			req.what, err = n.encodeMessage(req.what)
 			if err == nil {
-				select {
-				case req.ch.write <- req.what:
-					// Message added successfully
-				default:
-					req.ch.DroppedMessagesCount++
-					// Buffer is full, drop the oldest message and add the new one
-					<-req.ch.write // Drop the oldest message
-					req.ch.write <- req.what
-				}
+				req.ch.write <- req.what
 			}
 
 		case what := <-n.writeAll:
@@ -282,15 +274,7 @@ outer:
 			what, err = n.encodeMessage(what)
 			if err == nil {
 				for ch := range n.channels {
-					select {
-					case ch.write <- what:
-						// Message added successfully
-					default:
-						ch.DroppedMessagesCount++
-						// Buffer is full, drop the oldest message and add the new one
-						<-ch.write // Drop the oldest message
-						ch.write <- what
-					}
+					ch.write <- what
 				}
 			}
 
@@ -300,15 +284,7 @@ outer:
 			if err == nil {
 				for ch := range n.channels {
 					if ch != req.except {
-						select {
-						case ch.write <- req.what:
-							// Message added successfully
-						default:
-							ch.DroppedMessagesCount++
-							// Buffer is full, drop the oldest message and add the new one
-							<-ch.write // Drop the oldest message
-							ch.write <- req.what
-						}
+						ch.write <- req.what
 					}
 				}
 			}

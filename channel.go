@@ -8,8 +8,6 @@ import (
 	"github.com/bluenviron/gomavlib/v2/pkg/message"
 )
 
-const MAX_MSG_QUEUE_LEN uint16 = 100
-
 func randomByte() byte {
 	var buf [1]byte
 	rand.Read(buf[:])
@@ -29,9 +27,8 @@ type Channel struct {
 	running bool
 
 	// in
-	write                chan interface{}
-	terminate            chan struct{}
-	DroppedMessagesCount uint32
+	write     chan interface{}
+	terminate chan struct{}
 }
 
 func newChannel(n *Node, e Endpoint, label string, rwc io.ReadWriteCloser) (*Channel, error) {
@@ -60,7 +57,7 @@ func newChannel(n *Node, e Endpoint, label string, rwc io.ReadWriteCloser) (*Cha
 		rwc:       rwc,
 		n:         n,
 		frw:       frw,
-		write:     make(chan interface{}, MAX_MSG_QUEUE_LEN),
+		write:     make(chan interface{}),
 		terminate: make(chan struct{}),
 	}, nil
 }
